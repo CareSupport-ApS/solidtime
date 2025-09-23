@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Jetstream\Jetstream;
+use Laravel\Socialite\Facades\Socialite;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +23,30 @@ use Laravel\Jetstream\Jetstream;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::get('/login', function() {
+    return Socialite::driver('azure')->redirect();
+})->name('login');
+
+Route::get('/login/azure/callback', function() {
+    $azureUser = Socialite::driver('azure')->user();
+    Log::info('Azure User:', (array) $azureUser);
+    $user = User::firstOrCreate([
+        'name' => $azureUser->getName(),
+        'email' => $azureUser->getEmail(),
+    ]);
+    // $user->token;
+    // Use the user information as needed
+    Auth::login($user);
+    return redirect('/');
+});
+
+Route::get('/logout', function(Request $request) {
+     Auth::guard()->logout();
+     $request->session()->flush();
+     $azureLogoutUrl = Socialite::driver('azure')->getLogoutUrl(route('login'));
+     return redirect($azureLogoutUrl);
+})->name('logout');
 
 Route::get('/', [HomeController::class, 'index']);
 

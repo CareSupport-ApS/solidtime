@@ -7,10 +7,14 @@ namespace App\Providers;
 use App\Listeners\RemovePlaceholder;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as BaseServiceProvider;
 use Laravel\Jetstream\Events\TeamMemberAdded;
 
-class EventServiceProvider extends ServiceProvider
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\ServiceProvider;
+
+
+class EventServiceProvider extends BaseServiceProvider
 {
     /**
      * The event to listener mappings for the application.
@@ -23,6 +27,10 @@ class EventServiceProvider extends ServiceProvider
         ],
         TeamMemberAdded::class => [
             RemovePlaceholder::class,
+        ],
+        \SocialiteProviders\Manager\SocialiteWasCalled::class => [
+            // ... other providers
+            \SocialiteProviders\Azure\AzureExtendSocialite::class.'@handle',
         ],
     ];
 
