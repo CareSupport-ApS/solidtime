@@ -60,7 +60,7 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  * @method Builder<User> belongsToOrganization(Organization $organization)
  * @method Builder<User> active()
  */
-class User extends Authenticatable implements AuditableContract, FilamentUser, MustVerifyEmail, OAuthenticatable
+class User extends Authenticatable implements AuditableContract, FilamentUser, OAuthenticatable
 {
     use CustomAuditable;
     use HasApiTokens;
