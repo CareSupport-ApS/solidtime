@@ -85,7 +85,6 @@ Route::get('/shared-report', function () {
 Route::middleware([
     'auth:web',
     config('jetstream.auth_session'),
-    'verified',
 ])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
