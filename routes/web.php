@@ -41,12 +41,12 @@ Route::get('/login/azure/callback', function() {
     return redirect('/');
 });
 
-Route::get('/logout', function(Request $request) {
-     Auth::guard()->logout();
-     $request->session()->flush();
-     $azureLogoutUrl = Socialite::driver('azure')->getLogoutUrl(route('login'));
-     return redirect($azureLogoutUrl);
-})->name('logout');
+// Route::get('/logout', function(Request $request) {
+//      Auth::guard()->logout();
+//      $request->session()->flush();
+//      $azureLogoutUrl = Socialite::driver('azure')->getLogoutUrl(route('login'));
+//      return redirect($azureLogoutUrl);
+// })->name('logout');
 
 Route::get('/', [HomeController::class, 'index']);
 
