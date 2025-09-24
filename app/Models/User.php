@@ -60,7 +60,7 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  * @method Builder<User> belongsToOrganization(Organization $organization)
  * @method Builder<User> active()
  */
-class User extends Authenticatable implements AuditableContract, FilamentUser, OAuthenticatable
+class User extends Authenticatable implements AuditableContract, FilamentUser, MustVerifyEmail, OAuthenticatable
 {
     use CustomAuditable;
     use HasApiTokens;
@@ -136,7 +136,7 @@ class User extends Authenticatable implements AuditableContract, FilamentUser, O
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return in_array($this->email, config('auth.super_admins', []), true) && $this->hasVerifiedEmail();
+        return in_array($this->email, config('auth.super_admins', []), true);
     }
 
     public function canBeImpersonated(): bool

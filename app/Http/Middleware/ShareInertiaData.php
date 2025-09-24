@@ -32,9 +32,7 @@ class ShareInertiaData
                 $user = $request->user();
 
                 return [
-                    'canCreateTeams' => $user !== null &&
-                        Jetstream::userHasTeamFeatures($user) &&
-                        Gate::forUser($user)->check('create', Jetstream::newTeamModel()),
+                    'canCreateTeams' => $user !== null && in_array($user->email, config('auth.super_admins', []), true),
                     'canManageTwoFactorAuthentication' => Features::canManageTwoFactorAuthentication(),
                     'canUpdatePassword' => Features::enabled(Features::updatePasswords()),
                     'canUpdateProfileInformation' => Features::canUpdateProfileInformation(),

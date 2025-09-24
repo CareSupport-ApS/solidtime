@@ -123,4 +123,6 @@ return [
 
     'newsletter_consent' => env('NEWSLETTER_CONSENT', false),
 
+    'main_organization_id' => env('MAIN_ORGANIZATION_ID', null),
+
 ];

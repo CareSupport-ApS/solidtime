@@ -2,9 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Actions\Fortify\CreateNewUser;
+use App\Enums\Role;
+use App\Enums\Weekday;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
+use App\Models\Member;
+use App\Models\Organization;
 use App\Models\User;
+use App\Service\CustomLogicService;
+use App\Service\MemberService;
+use App\Service\UserService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
@@ -12,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Jetstream\Jetstream;
 use Laravel\Socialite\Facades\Socialite;
+use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,13 +39,32 @@ Route::get('/login', function() {
 
 Route::get('/login/azure/callback', function() {
     $azureUser = Socialite::driver('azure')->user();
+    if($azureUser === null || $azureUser->getEmail() === null) {
+        Log::info('Azure login failed: No user or email returned');
+        return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
+    }
     Log::info('Azure User:', (array) $azureUser);
-    $user = User::firstOrCreate([
-        'name' => $azureUser->getName(),
-        'email' => $azureUser->getEmail(),
-    ]);
-    // $user->token;
-    // Use the user information as needed
+    $user = User::where('email', $azureUser->getEmail())->where('is_placeholder', false)->first();
+
+    if($user === null) {
+        Log::info('No user found with gmail: '.$azureUser->getEmail());
+        $customLogicService = app(CustomLogicService::class);
+
+        $user = $customLogicService->createUser(
+            $azureUser->getName() ?? $azureUser->getNickname() ?? 'No Name',
+            $azureUser->getEmail(),
+            bin2hex(random_bytes(16)), // Generate a random password
+            'Europe/Copenhagen',
+            Weekday::Monday,
+            'DKK',
+            null,
+            null,
+            null,
+            null,
+            null,
+            false
+        );
+    }
     Auth::login($user);
     return redirect('/');
 });
