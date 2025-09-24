@@ -62,7 +62,7 @@ Route::get('/login/azure/callback', function() {
             null,
             null,
             null,
-            false
+            true
         );
     }
     Auth::login($user);
@@ -85,6 +85,7 @@ Route::get('/shared-report', function () {
 Route::middleware([
     'auth:web',
     config('jetstream.auth_session'),
+    'verified',
 ])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
