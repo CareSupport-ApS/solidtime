@@ -11,6 +11,7 @@ use App\Models\TimeEntry;
 use Carbon\Exceptions\InvalidFormatException;
 use Exception;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use League\Csv\Exception as CsvException;
 use League\Csv\Reader;
@@ -113,9 +114,9 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
                 $timeEntry->client_id = $clientId;
                 $timeEntry->organization_id = $this->organization->id;
                 if (strlen($record['Description']) > 500) {
-                    throw new ImportException('Time entry description is too long');
+                    // throw new ImportException('Time entry description is too long');
                 }
-                $timeEntry->description = $record['Description'];
+                $timeEntry->description = Str::limit($record['Description'], 450);
                 if (! in_array($record['Billable'], ['Yes', 'No'], true)) {
                     throw new ImportException('Invalid billable value');
                 }
