@@ -96,9 +96,9 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
                     ]);
                 }
                 $taskId = null;
-                if ($record['Task'] !== '') {
+                if ($record['Activity'] !== '') {
                     $taskId = $this->taskImportHelper->getKey([
-                        'name' => $record['Task'],
+                        'name' => $record['Activity'],
                         'project_id' => $projectId,
                         'organization_id' => $this->organization->id,
                     ]);
@@ -214,7 +214,7 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
             'Project',
             'Client',
             'Description',
-            'Task',
+            'Activity',
             'User',
             'Group',
             'Email',
