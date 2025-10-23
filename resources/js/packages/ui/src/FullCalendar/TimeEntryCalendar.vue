@@ -250,7 +250,7 @@ const calendarOptions = computed(() => ({
     editable: true,
     eventResizableFromStart: true,
     eventDurationEditable: true,
-    timeZone: 'America/Adak',
+    timeZone: getUserTimezone(),
     eventStartEditable: true,
     select: handleDateSelect,
     eventClick: handleEventClick,
@@ -332,9 +332,16 @@ watch(showEditTimeEntryModal, (value) => {
             </template>
             <template #dayHeaderContent="arg">
                 <FullCalendarDayHeader
-                    :date="arg.date"
+                    :date="
+                        getDayJsInstance()(arg.date.toISOString()).utc().tz(getUserTimezone(), true)
+                    "
                     :total-minutes="
-                        dailyTotals[getDayJsInstance()(arg.date).format('YYYY-MM-DD')] || 0
+                        dailyTotals[
+                            getDayJsInstance()(arg.date)
+                                .utc()
+                                .tz(getUserTimezone(), true)
+                                .format('YYYY-MM-DD')
+                        ] || 0
                     " />
             </template>
         </FullCalendar>
@@ -451,6 +458,7 @@ watch(showEditTimeEntryModal, (value) => {
     cursor: pointer;
     box-shadow: var(--theme-shadow-card);
     opacity: 0.9;
+    overflow: hidden;
 }
 
 .fullcalendar :deep(.fc-v-event) {

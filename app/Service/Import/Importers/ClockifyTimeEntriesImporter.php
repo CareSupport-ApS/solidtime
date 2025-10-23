@@ -11,7 +11,6 @@ use App\Models\TimeEntry;
 use Carbon\Exceptions\InvalidFormatException;
 use Exception;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use League\Csv\Exception as CsvException;
 use League\Csv\Reader;
@@ -97,9 +96,9 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
                     ]);
                 }
                 $taskId = null;
-                if ($record['Activity'] !== '') {
+                if ($record['Task'] !== '') {
                     $taskId = $this->taskImportHelper->getKey([
-                        'name' => $record['Activity'],
+                        'name' => $record['Task'],
                         'project_id' => $projectId,
                         'organization_id' => $this->organization->id,
                     ]);
@@ -113,10 +112,10 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
                 $timeEntry->project_id = $projectId;
                 $timeEntry->client_id = $clientId;
                 $timeEntry->organization_id = $this->organization->id;
-                if (strlen($record['Description']) > 500) {
-                    // throw new ImportException('Time entry description is too long');
+                if (strlen($record['Description']) > 5000) {
+                    throw new ImportException('Time entry description is too long');
                 }
-                $timeEntry->description = Str::limit($record['Description'], 450);
+                $timeEntry->description = $record['Description'];
                 if (! in_array($record['Billable'], ['Yes', 'No'], true)) {
                     throw new ImportException('Invalid billable value');
                 }
@@ -215,7 +214,7 @@ class ClockifyTimeEntriesImporter extends DefaultImporter
             'Project',
             'Client',
             'Description',
-            'Activity',
+            'Task',
             'User',
             'Group',
             'Email',
