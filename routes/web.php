@@ -38,7 +38,12 @@ Route::get('/login', function() {
 })->name('login');
 
 Route::get('/login/azure/callback', function() {
-    $azureUser = Socialite::driver('azure')->user();
+    try{
+        $azureUser = Socialite::driver('azure')->user();
+    }catch(\Exception $e) {
+        Log::error('Azure login failed: '.$e->getMessage());
+        return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
+    }
     if($azureUser === null || $azureUser->getEmail() === null) {
         Log::info('Azure login failed: No user or email returned');
         return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
