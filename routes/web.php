@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Fortify\CreateNewUser;
 use App\Enums\Role;
 use App\Enums\Weekday;
+use App\Http\Controllers\Web\SSOController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
 use App\Models\Member;
@@ -33,53 +34,11 @@ use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 |
 */
 
-Route::get('/login', function() {
-    return Socialite::driver('azure')->redirect();
-})->name('login');
+Route::get('/login', [SSOController::class, 'login'])->name('login');
 
-Route::get('/login/azure/callback', function() {
-    try{
-        $azureUser = Socialite::driver('azure')->user();
-    }catch(\Exception $e) {
-        Log::error('Azure login failed: '.$e->getMessage());
-        return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
-    }
-    if($azureUser === null || $azureUser->getEmail() === null) {
-        Log::info('Azure login failed: No user or email returned');
-        return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
-    }
-    Log::info('Azure User:', (array) $azureUser);
-    $user = User::where('email', $azureUser->getEmail())->where('is_placeholder', false)->first();
+Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
 
-    if($user === null) {
-        Log::info('No user found with gmail: '.$azureUser->getEmail());
-        $customLogicService = app(CustomLogicService::class);
-
-        $user = $customLogicService->createUser(
-            $azureUser->getName() ?? $azureUser->getNickname() ?? 'No Name',
-            $azureUser->getEmail(),
-            bin2hex(random_bytes(16)), // Generate a random password
-            'Europe/Copenhagen',
-            Weekday::Monday,
-            'DKK',
-            null,
-            null,
-            null,
-            null,
-            null,
-            true
-        );
-    }
-    Auth::login($user);
-    return redirect('/');
-});
-
-// Route::get('/logout', function(Request $request) {
-//      Auth::guard()->logout();
-//      $request->session()->flush();
-//      $azureLogoutUrl = Socialite::driver('azure')->getLogoutUrl(route('login'));
-//      return redirect($azureLogoutUrl);
-// })->name('logout');
+Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
 
 Route::get('/', [HomeController::class, 'index']);
 
