@@ -8,6 +8,7 @@ use App\Enums\Weekday;
 use App\Http\Controllers\Web\SSOController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
+use App\Http\Middleware\SetOrganizationMiddleware;
 use App\Models\Member;
 use App\Models\Organization;
 use App\Models\User;
@@ -33,12 +34,19 @@ use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 | contains the "web" middleware group. Now create something great!
 |
 */
+// Route::pattern('tenant', '[a-zA-Z0-9\.-]+');
 
-Route::get('/login', [SSOController::class, 'login'])->name('login');
+//TODO: middleware for SSO routes, that sets organization based on domain, and sets service configuration. Adds user to that organization.
+Route::
+    // domain('{tenant}')
+    middleware(SetOrganizationMiddleware::class)
+    ->group(function () {
+        Route::get('/login', [SSOController::class, 'login'])->name('login');
 
-Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
+        Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
 
-Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
+        Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
+});
 
 Route::get('/', [HomeController::class, 'index']);
 
