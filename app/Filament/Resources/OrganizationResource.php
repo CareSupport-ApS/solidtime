@@ -113,7 +113,7 @@ class OrganizationResource extends Resource
                     Forms\Components\TextInput::make('domain')
                         ->label('Domain')
                         ->helperText('')
-                        ->unique()
+                        ->unique(ignoreRecord: true)
                         ->nullable()
                         ->maxLength(255),
                     Forms\Components\TextInput::make('client_id')
