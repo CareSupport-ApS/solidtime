@@ -8,6 +8,7 @@ use App\Enums\Weekday;
 use App\Http\Controllers\Web\SSOController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
+use App\Http\Middleware\SetOrganizationMiddleware;
 use App\Models\Member;
 use App\Models\Organization;
 use App\Models\User;
@@ -34,11 +35,15 @@ use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 |
 */
 
-Route::get('/login', [SSOController::class, 'login'])->name('login');
+Route::
+    middleware(SetOrganizationMiddleware::class)
+    ->group(function () {
+        Route::get('/login', [SSOController::class, 'login'])->name('login');
 
-Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
+        Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
 
-Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
+        Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
+});
 
 Route::get('/', [HomeController::class, 'index']);
 
