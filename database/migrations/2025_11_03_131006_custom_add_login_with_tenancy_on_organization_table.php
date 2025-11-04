@@ -26,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn(['domain', 'client_id', 'secret', 'tenant_id', 'redirect_path','default_organization_id']);
+            $table->dropColumn(['domain', 'client_id', 'secret', 'tenant_id', 'redirect_path']);
         });
     }
 };
