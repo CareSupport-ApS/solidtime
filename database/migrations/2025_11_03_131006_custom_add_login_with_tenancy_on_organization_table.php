@@ -13,11 +13,10 @@ return new class extends Migration
     {
         Schema::table('organizations', function (Blueprint $table) {
             $table->string('domain')->nullable();
-            $table->text('entity_id')->nullable();
+            $table->text('client_id')->nullable();
             $table->text('secret')->nullable();
             $table->text('tenant_id')->nullable();
             $table->string('redirect_path')->nullable();
-            $table->string('default_organization_id')->nullable();
         });
     }
 
@@ -27,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn(['domain', 'entity_id', 'secret', 'tenant_id', 'redirect_path','default_organization_id']);
+            $table->dropColumn(['domain', 'client_id', 'secret', 'tenant_id', 'redirect_path','default_organization_id']);
         });
     }
 };

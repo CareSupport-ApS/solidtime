@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Organization;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,9 +19,23 @@ class SetOrganizationMiddleware
     {
         Log::info('SetOrganizationMiddleware triggered');
         $domain = $request->getHost();
-        //TODO find organization based on domain.
-        //TODO set organization in some config.
-        Log::info('Setting organization for domain: '.$domain);
+
+        $organization = Organization::where('domain', $domain)->first();
+        if ($organization) {
+            $config = [
+                'client_id' => $organization->client_id,
+                'client_secret' => $organization->secret,
+                'redirect' => $organization->redirect_path,
+                'tenant' => $organization->tenant_id ?? null,
+            ];
+            config(['services.azure' => $config]);
+            config(['auth.main_organization_id' => $organization->id]);
+            Log::info('Organization set to ID: '.$organization->id);
+        }else{
+            Log::info("no organization found for domain: $domain");
+        }
+        Log::info('Azure config: ', config('services.azure'));
+        Log::info('Main organization ID: '.config('auth.main_organization_id'));
         return $next($request);
     }
 }

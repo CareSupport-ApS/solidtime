@@ -115,8 +115,7 @@ class OrganizationResource extends Resource
                         ->helperText('')
                         ->nullable()
                         ->maxLength(255),
-                    Forms\Components\TextInput::make('entity_id')
-                        ->label('Entity ID')
+                    Forms\Components\TextInput::make('client_id')
                         ->helperText('')
                         ->nullable()
                         ->maxLength(255),
@@ -135,11 +134,11 @@ class OrganizationResource extends Resource
                         // ->helperText('The domain used for SSO login. E.g. solidtime.com')
                         ->nullable()
                         ->maxLength(255),
-                    Forms\Components\TextInput::make('default_organization_id')
-                        // ->label('Domain')
-                        // ->helperText('The domain used for SSO login. E.g. solidtime.com')
-                        ->nullable()
-                        ->maxLength(255),
+                    // Forms\Components\TextInput::make('default_organization_id')
+                    //     // ->label('Domain')
+                    //     // ->helperText('The domain used for SSO login. E.g. solidtime.com')
+                    //     ->nullable()
+                    //     ->maxLength(255),
                 ])
             ]);
     }
