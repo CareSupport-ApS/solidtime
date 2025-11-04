@@ -17,7 +17,7 @@ class SetOrganizationMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Log::info('SetOrganizationMiddleware triggered');
+        Log::info('SetOrganizationMiddleware triggered');
         $domain = $request->getHost();
 
         $organization = Organization::where('domain', $domain)->first();
@@ -30,12 +30,12 @@ class SetOrganizationMiddleware
             ];
             config(['services.azure' => $config]);
             config(['auth.main_organization_id' => $organization->id]);
-            // Log::info('Organization set to ID: '.$organization->id);
+            Log::info('Organization set to ID: '.$organization->id);
         }else{
-            // Log::info("no organization found for domain: $domain");
+            Log::info("no organization found for domain: $domain");
         }
-        // Log::info('Azure config: ', config('services.azure'));
-        // Log::info('Main organization ID: '.config('auth.main_organization_id'));
+        Log::info('Azure config: ', config('services.azure'));
+        Log::info('Main organization ID: '.config('auth.main_organization_id'));
         return $next($request);
     }
 }
