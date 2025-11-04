@@ -42,7 +42,7 @@ class SSOController extends Controller
             Log::info('No user found with gmail: '.$azureUser->getEmail());
             $customLogicService = app(CustomLogicService::class);
             $password = bin2hex(random_bytes(16));
-            Log::info('Creating user '. $azureUser->getEmail() .' with random password: '.$password);
+            // Log::info('Creating user '. $azureUser->getEmail() .' with random password: '.$password);
             $user = $customLogicService->createUser(
                 $azureUser->getName() ?? $azureUser->getNickname() ?? 'No Name',
                 $azureUser->getEmail(),

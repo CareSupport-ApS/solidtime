@@ -12,6 +12,7 @@ use App\Enums\TimeFormat;
 use App\Models\Concerns\CustomAuditable;
 use App\Models\Concerns\HasUuids;
 use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
@@ -183,5 +185,29 @@ class Organization extends JetstreamTeam implements AuditableContract
         }
 
         return parent::findOrFail($id, $columns);
+    }
+
+    public function clientId(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Crypt::decryptString($value) : null,
+            set: fn ($value) => $value ? Crypt::encryptString(trim($value)) : null
+        );
+    }
+
+    public function secret(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Crypt::decryptString($value) : null,
+            set: fn ($value) => $value ? Crypt::encryptString(trim($value)) : null
+        );
+    }
+
+    public function tenantId(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Crypt::decryptString($value) : null,
+            set: fn ($value) => $value ? Crypt::encryptString(trim($value)) : null
+        );
     }
 }

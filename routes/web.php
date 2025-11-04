@@ -34,11 +34,8 @@ use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 | contains the "web" middleware group. Now create something great!
 |
 */
-// Route::pattern('tenant', '[a-zA-Z0-9\.-]+');
 
-//TODO: middleware for SSO routes, that sets organization based on domain, and sets service configuration. Adds user to that organization.
 Route::
-    // domain('{tenant}')
     middleware(SetOrganizationMiddleware::class)
     ->group(function () {
         Route::get('/login', [SSOController::class, 'login'])->name('login');
