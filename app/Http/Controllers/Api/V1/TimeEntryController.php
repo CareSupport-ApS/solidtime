@@ -9,6 +9,7 @@ use App\Enums\Role;
 use App\Exceptions\Api\FeatureIsNotAvailableInFreePlanApiException;
 use App\Exceptions\Api\OverlappingTimeEntryApiException;
 use App\Exceptions\Api\PdfRendererIsNotConfiguredException;
+use App\Exceptions\Api\ProjectNotSelectedApiException;
 use App\Exceptions\Api\TimeEntryCanNotBeRestartedApiException;
 use App\Exceptions\Api\TimeEntryStillRunningApiException;
 use App\Http\Requests\V1\TimeEntry\TimeEntryAggregateExportRequest;
@@ -93,6 +94,13 @@ class TimeEntryController extends Controller
         if ($query->exists()) {
             throw new OverlappingTimeEntryApiException;
         }
+    }
+
+    private function checkProjectSelected(Organization $organization, ?string $project_id): void{
+        if(!$organization->prevent_time_entries_without_project || $project_id !== null){
+            return;
+        }
+        else throw new ProjectNotSelectedApiException;
     }
 
     protected function checkPermission(Organization $organization, string $permission, ?TimeEntry $timeEntry = null): void
@@ -594,6 +602,9 @@ class TimeEntryController extends Controller
         $this->assertNoOverlap($organization, $member, $start, $end);
 
         $project = $request->input('project_id') !== null ? Project::findOrFail((string) $request->input('project_id')) : null;
+        if(!is_null($request->input('end'))){
+            $this->checkProjectSelected($organization, $request->input('project_id'));
+        }
         $client = $project?->client;
         $task = $request->input('task_id') !== null ? $project->tasks()->findOrFail((string) $request->input('task_id')) : null;
 
@@ -652,6 +663,9 @@ class TimeEntryController extends Controller
             $project = $request->input('project_id') !== null ? Project::findOrFail((string) $request->input('project_id')) : null;
             $client = $project?->client;
             $timeEntry->client()->associate($client);
+        }
+        if(!is_null($request->input('end'))){
+            $this->checkProjectSelected($organization, $timeEntry->project_id ?? null);
         }
         $task = null;
         if ($request->has('task_id')) {
