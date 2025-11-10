@@ -14,13 +14,17 @@ const { updateOrganization } = store;
 const { organization } = storeToRefs(store);
 const queryClient = useQueryClient();
 
-const form = ref<{ prevent_overlapping_time_entries: boolean }>({
+const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean}>({
     prevent_overlapping_time_entries: false,
+    prevent_time_entries_without_project: false,
 });
 
 onMounted(async () => {
+    console.log('organization', organization.value);
     form.value.prevent_overlapping_time_entries =
         organization.value?.prevent_overlapping_time_entries ?? false;
+    form.value.prevent_time_entries_without_project =
+        organization.value?.prevent_time_entries_without_project ?? false;
 });
 
 const mutation = useMutation({
@@ -33,6 +37,7 @@ const mutation = useMutation({
 async function submit() {
     await mutation.mutateAsync({
         prevent_overlapping_time_entries: form.value.prevent_overlapping_time_entries,
+        prevent_time_entries_without_project: form.value.prevent_time_entries_without_project,
     });
 }
 </script>
@@ -56,6 +61,18 @@ async function submit() {
                         <InputLabel
                             for="preventOverlappingTimeEntries"
                             value="Prevent overlapping time entries (new entries only)" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-span-6">
+                <div class="col-span-6 sm:col-span-4">
+                    <div class="flex items-center space-x-2">
+                        <Checkbox
+                            id="preventOverlappingTimeEntries"
+                            v-model:checked="form.prevent_time_entries_without_project" />
+                        <InputLabel
+                            for="preventOverlappingTimeEntries"
+                            value="Prevent time entries without Project" />
                     </div>
                 </div>
             </div>
