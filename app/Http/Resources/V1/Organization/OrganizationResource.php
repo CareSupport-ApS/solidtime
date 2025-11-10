@@ -55,6 +55,8 @@ class OrganizationResource extends BaseResource
             'employees_can_see_billable_rates' => $this->resource->employees_can_see_billable_rates,
             /** @var bool $prevent_overlapping_time_entries Prevent creating overlapping time entries (only new entries) */
             'prevent_overlapping_time_entries' => $this->resource->prevent_overlapping_time_entries,
+            /** @var bool $prevent_time_entries_without_project Prevent creating time entries without project */
+            'prevent_time_entries_without_project' => $this->resource->prevent_time_entries_without_project,
             /** @var string $currency Currency code (ISO 4217) */
             'currency' => $this->resource->currency,
             /** @var string $currency_symbol Currency symbol */

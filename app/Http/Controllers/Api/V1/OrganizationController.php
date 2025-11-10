@@ -10,6 +10,7 @@ use App\Http\Resources\V1\Organization\OrganizationResource;
 use App\Models\Organization;
 use App\Service\BillableRateService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationController extends Controller
 {
@@ -38,6 +39,10 @@ class OrganizationController extends Controller
      */
     public function update(Organization $organization, OrganizationUpdateRequest $request, BillableRateService $billableRateService): OrganizationResource
     {
+        Log::info('Updating organization via API', [
+            'organization_id' => $organization->getKey(),
+            'request_data' => $request->all(),
+        ]);
         $this->checkPermission($organization, 'organizations:update');
 
         if ($request->getName() !== null) {
@@ -63,6 +68,9 @@ class OrganizationController extends Controller
         }
         if ($request->getPreventOverlappingTimeEntries() !== null) {
             $organization->prevent_overlapping_time_entries = $request->getPreventOverlappingTimeEntries();
+        }
+        if ($request->getPreventTimeEntriesWithoutProject() !== null) {
+            $organization->prevent_time_entries_without_project = $request->getPreventTimeEntriesWithoutProject();
         }
         $hasBillableRate = $request->has('billable_rate');
         if ($hasBillableRate) {
