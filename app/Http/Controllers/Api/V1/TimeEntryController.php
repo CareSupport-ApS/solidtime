@@ -584,10 +584,6 @@ class TimeEntryController extends Controller
      */
     public function store(Organization $organization, TimeEntryStoreRequest $request): JsonResource
     {
-        Log::info('Storing time entry via API', [
-            'organization_id' => $organization->getKey(),
-            'request_data' => $request->all(),
-        ]);
         /** @var Member $member */
         $member = Member::query()->findOrFail($request->input('member_id'));
         if ($member->user_id === Auth::id()) {
@@ -640,11 +636,6 @@ class TimeEntryController extends Controller
      */
     public function update(Organization $organization, TimeEntry $timeEntry, TimeEntryUpdateRequest $request): JsonResource
     {
-        Log::info('Updating time entry via API', [
-            'organization_id' => $organization->getKey(),
-            'time_entry_id' => $timeEntry->getKey(),
-            'request_data' => $request->all(),
-        ]);
         /** @var Member|null $member */
         $member = $request->has('member_id') ? Member::query()->findOrFail($request->input('member_id')) : null;
         if ($timeEntry->member->user_id === Auth::id() && ($member === null || $member->user_id === Auth::id())) {
@@ -670,11 +661,6 @@ class TimeEntryController extends Controller
         $project = null;
         if ($request->has('project_id')) {
             $project = $request->input('project_id') !== null ? Project::findOrFail((string) $request->input('project_id')) : null;
-            Log::info('Updating project for time entry via API', [
-                'organization_id' => $organization->getKey(),
-                'time_entry_id' => $timeEntry->getKey(),
-                'new_project_id' => $project?->getKey(),
-            ]);
             $client = $project?->client;
             $timeEntry->client()->associate($client);
         }
