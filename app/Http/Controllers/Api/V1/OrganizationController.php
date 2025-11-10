@@ -39,10 +39,6 @@ class OrganizationController extends Controller
      */
     public function update(Organization $organization, OrganizationUpdateRequest $request, BillableRateService $billableRateService): OrganizationResource
     {
-        Log::info('Updating organization via API', [
-            'organization_id' => $organization->getKey(),
-            'request_data' => $request->all(),
-        ]);
         $this->checkPermission($organization, 'organizations:update');
 
         if ($request->getName() !== null) {

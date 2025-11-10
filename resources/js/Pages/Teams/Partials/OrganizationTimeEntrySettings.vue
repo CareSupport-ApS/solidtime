@@ -20,7 +20,6 @@ const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entri
 });
 
 onMounted(async () => {
-    console.log('organization', organization.value);
     form.value.prevent_overlapping_time_entries =
         organization.value?.prevent_overlapping_time_entries ?? false;
     form.value.prevent_time_entries_without_project =
@@ -41,14 +40,12 @@ async function submit() {
     });
 }
 </script>
-
 <template>
     <FormSection>
         <template #title>Time Entry Settings</template>
         <template #description>
-            Disallow overlapping time entries for members of this organization. When enabled, users
-            cannot create new time entries that overlap with their existing ones. This only affects
-            newly created entries.
+            Configure time entry restrictions for members of this organization. These settings
+            only apply to newly created time entries and do not affect existing ones.
         </template>
 
         <template #form>
@@ -60,20 +57,26 @@ async function submit() {
                             v-model:checked="form.prevent_overlapping_time_entries" />
                         <InputLabel
                             for="preventOverlappingTimeEntries"
-                            value="Prevent overlapping time entries (new entries only)" />
+                            value="Prevent overlapping time entries" />
                     </div>
+                    <p class="mt-1 text-sm text-gray-600">
+                        When enabled, users cannot create time entries that overlap with their existing ones.
+                    </p>
                 </div>
             </div>
             <div class="col-span-6">
                 <div class="col-span-6 sm:col-span-4">
                     <div class="flex items-center space-x-2">
                         <Checkbox
-                            id="preventOverlappingTimeEntries"
+                            id="preventTimeEntriesWithoutProject"
                             v-model:checked="form.prevent_time_entries_without_project" />
                         <InputLabel
-                            for="preventOverlappingTimeEntries"
-                            value="Prevent time entries without project (new entries only)" />
+                            for="preventTimeEntriesWithoutProject"
+                            value="Require project assignment for time entries" />
                     </div>
+                    <p class="mt-1 text-sm text-gray-600">
+                        When enabled, all time entries must be assigned to a project.
+                    </p>
                 </div>
             </div>
         </template>
