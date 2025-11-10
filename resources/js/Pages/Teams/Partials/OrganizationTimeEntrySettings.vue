@@ -72,7 +72,7 @@ async function submit() {
                             v-model:checked="form.prevent_time_entries_without_project" />
                         <InputLabel
                             for="preventOverlappingTimeEntries"
-                            value="Prevent time entries without Project" />
+                            value="Prevent time entries without project (new entries only)" />
                     </div>
                 </div>
             </div>
