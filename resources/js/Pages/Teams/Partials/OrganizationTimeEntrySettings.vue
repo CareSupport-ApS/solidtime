@@ -14,9 +14,10 @@ const { updateOrganization } = store;
 const { organization } = storeToRefs(store);
 const queryClient = useQueryClient();
 
-const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean}>({
+const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean, prevent_time_entries_on_project_with_incomplete_tasks:boolean}>({
     prevent_overlapping_time_entries: false,
     prevent_time_entries_without_project: false,
+    prevent_time_entries_on_project_with_incomplete_tasks: false,
 });
 
 onMounted(async () => {
@@ -24,6 +25,8 @@ onMounted(async () => {
         organization.value?.prevent_overlapping_time_entries ?? false;
     form.value.prevent_time_entries_without_project =
         organization.value?.prevent_time_entries_without_project ?? false;
+    form.value.prevent_time_entries_on_project_with_incomplete_tasks =
+        organization.value?.prevent_time_entries_on_project_with_incomplete_tasks ?? false;
 });
 
 const mutation = useMutation({
@@ -37,6 +40,7 @@ async function submit() {
     await mutation.mutateAsync({
         prevent_overlapping_time_entries: form.value.prevent_overlapping_time_entries,
         prevent_time_entries_without_project: form.value.prevent_time_entries_without_project,
+        prevent_time_entries_on_project_with_incomplete_tasks: form.value.prevent_time_entries_on_project_with_incomplete_tasks,
     });
 }
 </script>
@@ -76,6 +80,21 @@ async function submit() {
                     </div>
                     <p class="mt-1 text-sm text-gray-600">
                         When enabled, all time entries must be assigned to a project.
+                    </p>
+                </div>
+            </div>
+            <div class="col-span-6">
+                <div class="col-span-6 sm:col-span-4">
+                    <div class="flex items-center space-x-2">
+                        <Checkbox
+                            id="preventTimeEntriesOnProjectWithIncompleteTasks"
+                            v-model:checked="form.prevent_time_entries_on_project_with_incomplete_tasks" />
+                        <InputLabel
+                            for="preventTimeEntriesOnProjectWithIncompleteTasks"
+                            value="Prevent time entries on projects with incomplete tasks" />
+                    </div>
+                    <p class="mt-1 text-sm text-gray-600">
+                        When enabled, users cannot create time entries on projects that have incomplete tasks.
                     </p>
                 </div>
             </div>

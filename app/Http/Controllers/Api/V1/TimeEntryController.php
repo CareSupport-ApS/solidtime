@@ -97,6 +97,7 @@ class TimeEntryController extends Controller
     }
 
     private function checkProjectSelected(Organization $organization, ?string $project_id): void{
+        //TODO: implement task check as well
         if(!$organization->prevent_time_entries_without_project || $project_id !== null){
             return;
         }

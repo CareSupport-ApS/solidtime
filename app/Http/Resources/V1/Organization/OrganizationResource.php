@@ -57,6 +57,8 @@ class OrganizationResource extends BaseResource
             'prevent_overlapping_time_entries' => $this->resource->prevent_overlapping_time_entries,
             /** @var bool $prevent_time_entries_without_project Prevent creating time entries without project */
             'prevent_time_entries_without_project' => $this->resource->prevent_time_entries_without_project,
+            /** @var bool $prevent_time_entries_on_project_with_incomplete_tasks Prevent creating time entries on projects with incomplete tasks */
+            'prevent_time_entries_on_project_with_incomplete_tasks' => $this->resource->prevent_time_entries_on_project_with_incomplete_tasks,
             /** @var string $currency Currency code (ISO 4217) */
             'currency' => $this->resource->currency,
             /** @var string $currency_symbol Currency symbol */
