@@ -16,7 +16,7 @@
         <meta name="msapplication-TileColor" content="#000000">
         <meta name="msapplication-config" content="/favicons/browserconfig.xml">
         <meta name="theme-color" content="#000000">
-
+        {{-- TODO: add script tag for feedback form --}}
         <!-- Scripts -->
         @routes
         @vite(array_filter(\Nwidart\Modules\Module::getAssets(), fn($asset) => $asset !== 'resources/css/filament/admin/theme.css'))
