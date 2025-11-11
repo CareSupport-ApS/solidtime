@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            $table->boolean('prevent_time_entries_without_project')->default(false);
+            $table->boolean('prevent_time_entries_without_project')->default(false)->after(('prevent_overlapping_time_entries'));
         });
     }
 
