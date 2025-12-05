@@ -194,6 +194,9 @@ watchEffect(() => {
         });
 
         const filteredTasks = projectTasks.filter((filterTask) => {
+            if(projectNameIncludesSearchTerm) {
+                return (!filterTask.is_done || filterTask.id === task.value);
+            }
             return (
                 filterTask.name
                     .toLowerCase()
