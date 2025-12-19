@@ -19,6 +19,7 @@ import ProjectBillableRateModal from '@/packages/ui/src/Project/ProjectBillableR
 import { getOrganizationCurrencyString } from '@/utils/money';
 import ProjectEditBillableSection from '@/packages/ui/src/Project/ProjectEditBillableSection.vue';
 import { isAllowedToPerformPremiumAction } from '@/utils/billing';
+import { Checkbox } from '@/packages/ui/src';
 
 const { updateProject } = useProjectsStore();
 const { clients } = storeToRefs(useClientsStore());
@@ -40,6 +41,7 @@ const project = ref<CreateProjectBody>({
     billable_rate: props.originalProject.billable_rate,
     is_billable: props.originalProject.is_billable,
     estimated_time: props.originalProject.estimated_time,
+    is_public: props.originalProject.is_public,
 });
 
 async function submit() {
@@ -124,6 +126,7 @@ async function submitBillableRate() {
                         </template>
                     </ClientDropdown>
                 </div>
+
             </div>
             <div>
                 <div>
@@ -139,7 +142,16 @@ async function submitBillableRate() {
                         v-model="project.estimated_time"
                         @submit="submit()"></EstimatedTimeSection>
                 </div>
+                <div class="flex items-center space-x-2 pt-6">
+                    <Checkbox
+                        id="is_public"
+                        v-model:checked="project.is_public" />
+                    <InputLabel
+                        for="is_public"
+                        value="Project is public" />
+                </div>
             </div>
+
         </template>
         <template #footer>
             <SecondaryButton @click="show = false"> Cancel</SecondaryButton>
