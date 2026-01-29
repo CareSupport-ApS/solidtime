@@ -99,6 +99,10 @@ async function submit() {
                     <p class="mt-1 text-sm text-gray-600">
                         When enabled, users cannot create time entries on projects that have incomplete tasks.
                     </p>
+                </div>
+            </div>
+            <div class="col-span-6">
+                <div class="col-span-6 sm:col-span-4">
                     <div class="flex items-center space-x-2">
                         <Checkbox
                             id="employeesCanManageTasks"
