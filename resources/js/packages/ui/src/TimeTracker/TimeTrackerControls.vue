@@ -15,8 +15,6 @@ import type {
 } from '@/packages/api/src';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { Dayjs } from 'dayjs';
-import { useTimeEntriesStore } from '@/utils/useTimeEntries';
-import { storeToRefs } from 'pinia';
 import { useFocus } from '@vueuse/core';
 import { autoUpdate, flip, limitShift, offset, shift, useFloating } from '@floating-ui/vue';
 import TimeTrackerRecentlyTrackedEntry from '@/packages/ui/src/TimeTracker/TimeTrackerRecentlyTrackedEntry.vue';
@@ -34,6 +32,7 @@ const props = defineProps<{
     tasks: Task[];
     tags: Tag[];
     clients: Client[];
+    timeEntries: TimeEntry[];
     createTag: (name: string) => Promise<Tag | undefined>;
     createProject: (project: CreateProjectBody) => Promise<Project | undefined>;
     createClient: (client: CreateClientBody) => Promise<Client | undefined>;
@@ -131,10 +130,9 @@ function updateTimeEntryDescription() {
     }
 }
 
-const { timeEntries } = storeToRefs(useTimeEntriesStore());
 const filteredRecentlyTrackedTimeEntries = computed(() => {
     // do not include running time entries
-    const finishedTimeEntries = timeEntries.value.filter((item) => item.end !== null);
+    const finishedTimeEntries = props.timeEntries.filter((item) => item.end !== null);
 
     // filter out duplicates based on description, task, project, tags and billable
     const nonDuplicateTimeEntries = finishedTimeEntries.filter((item, index, self) => {
@@ -209,7 +207,7 @@ useSelectEvents(
 <template>
     <div class="flex items-center relative @container" data-testid="dashboard_timer">
         <div
-            class="flex flex-col @2xl:flex-row w-full justify-between rounded-lg bg-card-background border-card-border border transition shadow-card">
+            class="flex flex-col @2xl:flex-row w-full justify-between rounded-lg bg-secondary border-card-border border transition shadow-card">
             <div class="flex flex-1 items-center pr-6 relative">
                 <input
                     ref="currentTimeEntryDescriptionInput"

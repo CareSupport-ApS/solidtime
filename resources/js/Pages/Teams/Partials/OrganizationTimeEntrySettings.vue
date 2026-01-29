@@ -14,10 +14,11 @@ const { updateOrganization } = store;
 const { organization } = storeToRefs(store);
 const queryClient = useQueryClient();
 
-const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean, prevent_time_entries_on_project_with_incomplete_tasks:boolean}>({
+const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean, prevent_time_entries_on_project_with_incomplete_tasks:boolean, employees_can_manage_tasks: boolean;}>({
     prevent_overlapping_time_entries: false,
     prevent_time_entries_without_project: false,
     prevent_time_entries_on_project_with_incomplete_tasks: false,
+     employees_can_manage_tasks: false,
 });
 
 onMounted(async () => {
@@ -27,6 +28,7 @@ onMounted(async () => {
         organization.value?.prevent_time_entries_without_project ?? false;
     form.value.prevent_time_entries_on_project_with_incomplete_tasks =
         organization.value?.prevent_time_entries_on_project_with_incomplete_tasks ?? false;
+    form.value.employees_can_manage_tasks = organization.value?.employees_can_manage_tasks ?? false;
 });
 
 const mutation = useMutation({
@@ -41,20 +43,21 @@ async function submit() {
         prevent_overlapping_time_entries: form.value.prevent_overlapping_time_entries,
         prevent_time_entries_without_project: form.value.prevent_time_entries_without_project,
         prevent_time_entries_on_project_with_incomplete_tasks: form.value.prevent_time_entries_on_project_with_incomplete_tasks,
+        employees_can_manage_tasks: form.value.employees_can_manage_tasks,
     });
 }
 </script>
 <template>
     <FormSection>
-        <template #title>Time Entry Settings</template>
+        <template #title>Organization Settings</template>
         <template #description>
-            Configure time entry restrictions for members of this organization. These settings
-            only apply to newly created time entries and do not affect existing ones.
+            Configure various settings for your organization, including time entry and task
+            management permissions.
         </template>
 
         <template #form>
             <div class="col-span-6">
-                <div class="col-span-6 sm:col-span-4">
+                <div class="col-span-6 sm:col-span-4 space-y-4">
                     <div class="flex items-center space-x-2">
                         <Checkbox
                             id="preventOverlappingTimeEntries"
@@ -96,6 +99,14 @@ async function submit() {
                     <p class="mt-1 text-sm text-gray-600">
                         When enabled, users cannot create time entries on projects that have incomplete tasks.
                     </p>
+                    <div class="flex items-center space-x-2">
+                        <Checkbox
+                            id="employeesCanManageTasks"
+                            v-model:checked="form.employees_can_manage_tasks" />
+                        <InputLabel
+                            for="employeesCanManageTasks"
+                            value="Allow Employees to manage tasks" />
+                    </div>
                 </div>
             </div>
         </template>
