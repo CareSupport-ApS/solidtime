@@ -10,8 +10,12 @@ import * as color from './utils/color';
 import * as random from './utils/random';
 import * as time from './utils/time';
 
+export { cn } from './utils/cn';
+export { buttonVariants, type ButtonVariants } from './Buttons/index';
+
 import PrimaryButton from './Buttons/PrimaryButton.vue';
 import SecondaryButton from './Buttons/SecondaryButton.vue';
+import Button from './Buttons/Button.vue';
 import TimeTrackerStartStop from './TimeTrackerStartStop.vue';
 import ProjectBadge from './Project/ProjectBadge.vue';
 import LoadingSpinner from './LoadingSpinner.vue';
@@ -20,6 +24,7 @@ import TextInput from './Input/TextInput.vue';
 import InputLabel from './Input/InputLabel.vue';
 import TimeTrackerRunningInDifferentOrganizationOverlay from './TimeTracker/TimeTrackerRunningInDifferentOrganizationOverlay.vue';
 import TimeTrackerControls from './TimeTracker/TimeTrackerControls.vue';
+import TimeTrackerMoreOptionsDropdown from './TimeTracker/TimeTrackerMoreOptionsDropdown.vue';
 import CardTitle from './CardTitle.vue';
 import SelectDropdown from './Input/SelectDropdown.vue';
 import Badge from './Badge.vue';
@@ -32,12 +37,20 @@ import MoreOptionsDropdown from './MoreOptionsDropdown.vue';
 import FullCalendarEventContent from './FullCalendar/FullCalendarEventContent.vue';
 import FullCalendarDayHeader from './FullCalendar/FullCalendarDayHeader.vue';
 import TimeEntryCalendar from './FullCalendar/TimeEntryCalendar.vue';
+import DateRangePicker from './Input/DateRangePicker.vue';
+import TimezoneMismatchModal from './TimezoneMismatchModal.vue';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip/index';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './accordion/index';
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from './popover/index';
+import { RangeCalendar } from './range-calendar/index';
+export type { ActivityPeriod } from './FullCalendar/idleStatusPlugin';
 
 export {
     money,
     color,
     random,
     time,
+    Button,
     PrimaryButton,
     SecondaryButton,
     TimeTrackerStartStop,
@@ -48,6 +61,7 @@ export {
     InputLabel,
     TimeTrackerRunningInDifferentOrganizationOverlay,
     TimeTrackerControls,
+    TimeTrackerMoreOptionsDropdown,
     CardTitle,
     SelectDropdown,
     Badge,
@@ -60,4 +74,19 @@ export {
     FullCalendarEventContent,
     FullCalendarDayHeader,
     TimeEntryCalendar,
+    DateRangePicker,
+    TimezoneMismatchModal,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+    PopoverAnchor,
+    RangeCalendar,
 };
