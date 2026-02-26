@@ -21,6 +21,7 @@ import { getOrganizationCurrencyString } from '@/utils/money';
 import ProjectEditBillableSection from '@/packages/ui/src/Project/ProjectEditBillableSection.vue';
 import { isAllowedToPerformPremiumAction } from '@/utils/billing';
 import { Checkbox } from '@/packages/ui/src';
+import InputLabel from '@/packages/ui/src/Input/InputLabel.vue';
 
 const { updateProject } = useProjectsStore();
 const { clients } = useClientsQuery();
@@ -124,7 +125,14 @@ async function submitBillableRate() {
                     v-if="isAllowedToPerformPremiumAction()"
                     v-model="project.estimated_time"
                     @submit="submit()"></EstimatedTimeSection>
-
+                <div class="flex items-center space-x-2 pt-6">
+                    <Checkbox
+                        id="is_public"
+                        v-model:checked="project.is_public" />
+                    <InputLabel
+                        for="is_public"
+                        value="Project is public" />
+                </div>
             </FieldGroup>
         </template>
         <template #footer>
