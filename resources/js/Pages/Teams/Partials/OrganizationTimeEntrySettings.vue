@@ -14,17 +14,20 @@ const { updateOrganization } = store;
 const { organization } = storeToRefs(store);
 const queryClient = useQueryClient();
 
-const form = ref<{
-    prevent_overlapping_time_entries: boolean;
-    employees_can_manage_tasks: boolean;
-}>({
+const form = ref<{ prevent_overlapping_time_entries: boolean, prevent_time_entries_without_project: boolean, prevent_time_entries_on_project_with_incomplete_tasks:boolean, employees_can_manage_tasks: boolean;}>({
     prevent_overlapping_time_entries: false,
-    employees_can_manage_tasks: false,
+    prevent_time_entries_without_project: false,
+    prevent_time_entries_on_project_with_incomplete_tasks: false,
+     employees_can_manage_tasks: false,
 });
 
 onMounted(async () => {
     form.value.prevent_overlapping_time_entries =
         organization.value?.prevent_overlapping_time_entries ?? false;
+    form.value.prevent_time_entries_without_project =
+        organization.value?.prevent_time_entries_without_project ?? false;
+    form.value.prevent_time_entries_on_project_with_incomplete_tasks =
+        organization.value?.prevent_time_entries_on_project_with_incomplete_tasks ?? false;
     form.value.employees_can_manage_tasks = organization.value?.employees_can_manage_tasks ?? false;
 });
 
@@ -38,11 +41,12 @@ const mutation = useMutation({
 async function submit() {
     await mutation.mutateAsync({
         prevent_overlapping_time_entries: form.value.prevent_overlapping_time_entries,
+        prevent_time_entries_without_project: form.value.prevent_time_entries_without_project,
+        prevent_time_entries_on_project_with_incomplete_tasks: form.value.prevent_time_entries_on_project_with_incomplete_tasks,
         employees_can_manage_tasks: form.value.employees_can_manage_tasks,
     });
 }
 </script>
-
 <template>
     <FormSection>
         <template #title>Organization Settings</template>
@@ -69,6 +73,22 @@ async function submit() {
                         >Allow Employees to manage tasks</FieldLabel
                     >
                 </Field>
+            <Field orientation="horizontal">
+                <Checkbox
+                    id="preventTimeEntriesWithoutProject"
+                    v-model:checked="form.prevent_time_entries_without_project" />
+                <FieldLabel for="preventTimeEntriesWithoutProject"
+                    >Require project assignment for time entries</FieldLabel
+                >
+            </Field>
+            <Field orientation="horizontal">
+                <Checkbox
+                    id="preventTimeEntriesOnProjectWithIncompleteTasks"
+                    v-model:checked="form.prevent_time_entries_on_project_with_incomplete_tasks" />
+                <FieldLabel for="preventTimeEntriesOnProjectWithIncompleteTasks"
+                    >Prevent time entries on projects with incomplete tasks</FieldLabel
+                >
+            </Field>
             </div>
         </template>
 

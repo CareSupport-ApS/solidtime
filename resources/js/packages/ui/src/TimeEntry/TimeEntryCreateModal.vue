@@ -122,11 +122,13 @@ watch(localEnd, (value) => {
 });
 
 async function submit() {
+    saving.value = true;
     await props.createTimeEntry({ ...timeEntry.value });
     timeEntry.value = { ...timeEntryDefaultValues };
     localStart.value = getLocalizedDayJs(timeEntryDefaultValues.start).format();
     localEnd.value = getLocalizedDayJs(timeEntryDefaultValues.end).format();
     show.value = false;
+    saving.value = false;
 }
 
 const billableProxy = computed({

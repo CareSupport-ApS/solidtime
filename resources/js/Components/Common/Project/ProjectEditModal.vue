@@ -20,6 +20,7 @@ import ProjectBillableRateModal from '@/packages/ui/src/Project/ProjectBillableR
 import { getOrganizationCurrencyString } from '@/utils/money';
 import ProjectEditBillableSection from '@/packages/ui/src/Project/ProjectEditBillableSection.vue';
 import { isAllowedToPerformPremiumAction } from '@/utils/billing';
+import { Checkbox } from '@/packages/ui/src';
 
 const { updateProject } = useProjectsStore();
 const { clients } = useClientsQuery();
@@ -41,6 +42,7 @@ const project = ref<CreateProjectBody>({
     billable_rate: props.originalProject.billable_rate,
     is_billable: props.originalProject.is_billable,
     estimated_time: props.originalProject.estimated_time,
+    is_public: props.originalProject.is_public,
 });
 
 async function submit() {
@@ -122,6 +124,7 @@ async function submitBillableRate() {
                     v-if="isAllowedToPerformPremiumAction()"
                     v-model="project.estimated_time"
                     @submit="submit()"></EstimatedTimeSection>
+
             </FieldGroup>
         </template>
         <template #footer>

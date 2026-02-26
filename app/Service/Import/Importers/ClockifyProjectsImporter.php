@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Import\Importers;
 
 use Exception;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use League\Csv\Exception as CsvException;
 use League\Csv\Reader;
@@ -47,8 +48,8 @@ class ClockifyProjectsImporter extends DefaultImporter
                     ]);
                 }
 
-                if ($record['Task'] !== '') {
-                    $tasks = explode(', ', $record['Task']);
+                if ($record['Activity'] !== '') {
+                    $tasks = explode(', ', $record['Activity']);
                     foreach ($tasks as $task) {
                         $this->taskImportHelper->getKey([
                             'name' => $task,
@@ -81,7 +82,7 @@ class ClockifyProjectsImporter extends DefaultImporter
             'Status',
             'Visibility',
             'Billability',
-            'Task',
+            'Activity',
         ];
         foreach ($requiredFields as $requiredField) {
             if (! in_array($requiredField, $header, true)) {

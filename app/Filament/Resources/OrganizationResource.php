@@ -24,6 +24,7 @@ use Brick\Money\ISOCurrencyProvider;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\Fieldset;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -107,6 +108,39 @@ class OrganizationResource extends Resource
                     ->label('Updated At')
                     ->hiddenOn(['create'])
                     ->disabled(),
+                Forms\Components\Section::make('SSO')
+                ->schema([
+                    Forms\Components\TextInput::make('domain')
+                        ->label('Domain')
+                        ->helperText('')
+                        ->unique(ignoreRecord: true)
+                        ->nullable()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('client_id')
+                        ->helperText('')
+                        ->nullable()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('secret')
+                        // ->label('')
+                        ->helperText('')
+                        ->nullable()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('tenant_id')
+                        // ->label('Domain')
+                        // ->helperText('The domain used for SSO login. E.g. solidtime.com')
+                        ->nullable()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('redirect_path')
+                        // ->label('Domain')
+                        // ->helperText('The domain used for SSO login. E.g. solidtime.com')
+                        ->nullable()
+                        ->maxLength(255),
+                    // Forms\Components\TextInput::make('default_organization_id')
+                    //     // ->label('Domain')
+                    //     // ->helperText('The domain used for SSO login. E.g. solidtime.com')
+                    //     ->nullable()
+                    //     ->maxLength(255),
+                ])
             ]);
     }
 

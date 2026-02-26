@@ -42,7 +42,7 @@ async function getConfig() {
             host: true,
             hmr: {
                 host: process.env.VITE_HOST_NAME,
-                clientPort: 80,
+                clientPort: 5173,
             },
         },
     });

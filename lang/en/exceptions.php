@@ -17,6 +17,8 @@ use App\Exceptions\Api\OrganizationNeedsAtLeastOneOwner;
 use App\Exceptions\Api\OverlappingTimeEntryApiException;
 use App\Exceptions\Api\PdfRendererIsNotConfiguredException;
 use App\Exceptions\Api\PersonalAccessClientIsNotConfiguredException;
+use App\Exceptions\Api\ProjectNotSelectedApiException;
+use App\Exceptions\Api\TaskNotSelectedApiException;
 use App\Exceptions\Api\ThisPlaceholderCanNotBeInvitedUseTheMergeToolInsteadException;
 use App\Exceptions\Api\TimeEntryCanNotBeRestartedApiException;
 use App\Exceptions\Api\TimeEntryStillRunningApiException;
@@ -49,6 +51,8 @@ return [
         ThisPlaceholderCanNotBeInvitedUseTheMergeToolInsteadException::KEY => 'This placeholder can not be invited use the merge tool instead',
         InvitationForTheEmailAlreadyExistsApiException::KEY => 'The email has already been invited to the organization. Please wait for the user to accept the invitation or resend the invitation email.',
         OverlappingTimeEntryApiException::KEY => 'Overlapping time entries are not allowed.',
+        ProjectNotSelectedApiException::KEY => 'Creating time entries without selecting a project is not allowed.',
+        TaskNotSelectedApiException::KEY => 'Creating time entries on projects with tasks is not allowed.',
     ],
     'unknown_error_in_admin_panel' => 'An unknown error occurred. Please check the logs.',
 ];

@@ -9,6 +9,8 @@ use App\Enums\Role;
 use App\Exceptions\Api\FeatureIsNotAvailableInFreePlanApiException;
 use App\Exceptions\Api\OverlappingTimeEntryApiException;
 use App\Exceptions\Api\PdfRendererIsNotConfiguredException;
+use App\Exceptions\Api\ProjectNotSelectedApiException;
+use App\Exceptions\Api\TaskNotSelectedApiException;
 use App\Exceptions\Api\TimeEntryCanNotBeRestartedApiException;
 use App\Exceptions\Api\TimeEntryStillRunningApiException;
 use App\Http\Requests\V1\TimeEntry\TimeEntryAggregateExportRequest;
@@ -93,6 +95,31 @@ class TimeEntryController extends Controller
         if ($query->exists()) {
             throw new OverlappingTimeEntryApiException;
         }
+    }
+
+    private function checkProjectSelected(Organization $organization, ?string $project_id): void{
+        if(!$organization->prevent_time_entries_without_project || $project_id !== null){
+            return;
+        }
+        else throw new ProjectNotSelectedApiException;
+    }
+
+    private function checkTaskForced(Organization $organization, ?string $task_id, ?string $project_id, ?Project $project){
+        if(!$organization->prevent_time_entries_on_project_with_incomplete_tasks || !is_null($task_id)){
+            return;
+        }
+        $project = $project ?? ($project_id !== null ? Project::find($project_id) : null);
+        if($project === null){
+            return;
+        }
+        $incompleteTasks = Task::query()
+            ->where('project_id', $project_id)
+            ->whereNull('done_at')->get();
+        if($incompleteTasks->count() === 0){
+            return;
+        }
+        throw new TaskNotSelectedApiException;
+
     }
 
     protected function checkPermission(Organization $organization, string $permission, ?TimeEntry $timeEntry = null): void
@@ -594,6 +621,11 @@ class TimeEntryController extends Controller
         $this->assertNoOverlap($organization, $member, $start, $end);
 
         $project = $request->input('project_id') !== null ? Project::findOrFail((string) $request->input('project_id')) : null;
+        if(!is_null($request->input('end'))){
+            $this->checkProjectSelected($organization, $request->input('project_id'));
+            $this->checkTaskForced($organization, $request->input('task_id'), $request->input('project_id'), $project);
+
+        }
         $client = $project?->client;
         $task = $request->input('task_id') !== null ? $project->tasks()->findOrFail((string) $request->input('task_id')) : null;
 
@@ -652,6 +684,10 @@ class TimeEntryController extends Controller
             $project = $request->input('project_id') !== null ? Project::findOrFail((string) $request->input('project_id')) : null;
             $client = $project?->client;
             $timeEntry->client()->associate($client);
+        }
+        if(!is_null($request->input('end'))){
+            $this->checkProjectSelected($organization, $timeEntry->project_id ?? null);
+            $this->checkTaskForced($organization, $timeEntry->task_id ?? $request->input('task_id'), $request->input('project_id') ?? $timeEntry->project_id, $project);
         }
         $task = null;
         if ($request->has('task_id')) {

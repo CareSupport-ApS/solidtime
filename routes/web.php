@@ -2,11 +2,27 @@
 
 declare(strict_types=1);
 
+use App\Actions\Fortify\CreateNewUser;
+use App\Enums\Role;
+use App\Enums\Weekday;
+use App\Http\Controllers\Web\SSOController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\HomeController;
+use App\Http\Middleware\SetOrganizationMiddleware;
+use App\Models\Member;
+use App\Models\Organization;
+use App\Models\User;
+use App\Service\CustomLogicService;
+use App\Service\MemberService;
+use App\Service\UserService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Jetstream\Jetstream;
+use Laravel\Socialite\Facades\Socialite;
+use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\Week;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +34,16 @@ use Laravel\Jetstream\Jetstream;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::
+    middleware(SetOrganizationMiddleware::class)
+    ->group(function () {
+        Route::get('/login', [SSOController::class, 'login'])->name('login');
+
+        Route::get('/login/azure/callback', [SSOController::class, 'callback'])->name('login.azure.callback');
+
+        Route::post('/logout', [SSOController::class, 'logout'])->name('logout');
+});
 
 Route::get('/', [HomeController::class, 'index']);
 
