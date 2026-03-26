@@ -58,6 +58,7 @@ const props = withDefaults(
         emptyPlaceholder?: string;
         allowReset?: boolean;
         enableEstimatedTime: boolean;
+        organizationBillableRate: number | null;
         canCreateProject: boolean;
         class?: string;
         variant?: 'input' | 'ghost' | 'outline';
@@ -73,10 +74,10 @@ const props = withDefaults(
     }
 );
 
-const filteredResults = ref([] as ClientsWithProjectsWithTasks);
+const filteredResults = ref<ClientsWithProjectsWithTasks>([]);
 
 // computed filterProjects that flattens the first layer of filteredResults and combines all the projects
-const filteredProjects = computed(() => {
+const filteredProjects = computed<ProjectWithTasks[]>(() => {
     return filteredResults.value.map((client) => client.projects).flat();
 });
 
@@ -645,7 +646,7 @@ const showCreateProject = ref(false);
                 </div>
                 <div v-if="canCreateProject" class="hover:bg-card-background-active rounded-b-lg">
                     <button
-                        class="text-text-primary flex space-x-3 items-center px-4 py-3 text-xs font-semibold border-t border-card-background-separator"
+                        class="text-text-primary w-full flex space-x-3 items-center px-4 py-3 text-xs font-semibold border-t border-card-background-separator"
                         @click="
                             open = false;
                             showCreateProject = true;
@@ -663,6 +664,7 @@ const showCreateProject = ref(false);
         v-model:show="showCreateProject"
         :create-client
         :enable-estimated-time="enableEstimatedTime"
+        :organization-billable-rate="organizationBillableRate"
         :currency="currency"
         :clients="clients"
         :create-project></ProjectCreateModal>
