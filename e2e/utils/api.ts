@@ -16,12 +16,59 @@ export interface TestContext {
 // Auth helpers
 // ──────────────────────────────────────────────────
 
-async function getApiHeaders(page: Page): Promise<Record<string, string>> {
-    const cookies = await page.context().cookies();
-    const xsrfCookie = cookies.find((c) => c.name === 'XSRF-TOKEN');
+/**
+ * Create a Passport API token by calling the token endpoint from the browser.
+ *
+ * The browser's native fetch includes the laravel_token cookie (set by
+ * CreateFreshApiToken during the dashboard page load), so authentication
+ * is handled by the browser's own cookie jar. The returned Bearer token is
+ * then used for all subsequent API calls, making them independent of cookie state.
+ *
+ * If the first attempt returns 401 (Octane hasn't fully committed the session yet),
+ * we reload the page to trigger a fresh CreateFreshApiToken and retry.
+ */
+async function createApiToken(page: Page): Promise<string> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const result = await page.evaluate(async (baseUrl) => {
+            const xsrfCookie = document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='));
+            const xsrfToken = xsrfCookie
+                ? decodeURIComponent(xsrfCookie.split('=').slice(1).join('='))
+                : '';
+
+            const res = await fetch(`${baseUrl}/api/v1/users/me/api-tokens`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': xsrfToken,
+                },
+                body: JSON.stringify({ name: 'playwright-test' }),
+            });
+
+            if (!res.ok) {
+                return null;
+            }
+
+            const body = await res.json();
+            return body.data.access_token as string;
+        }, PLAYWRIGHT_BASE_URL);
+
+        if (result) {
+            return result;
+        }
+
+        // Reload to get a fresh laravel_token cookie and retry.
+        // networkidle gives Octane time to fully commit the session.
+        await page.reload({ waitUntil: 'networkidle' });
+    }
+
+    throw new Error('Failed to create API token after retries');
+}
+
+function bearerHeaders(token: string): Record<string, string> {
     return {
         Accept: 'application/json',
-        ...(xsrfCookie ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfCookie.value) } : {}),
+        Authorization: `Bearer ${token}`,
     };
 }
 
@@ -30,8 +77,10 @@ async function getApiHeaders(page: Page): Promise<Record<string, string>> {
 // ──────────────────────────────────────────────────
 
 export async function setupTestContext(page: Page): Promise<TestContext> {
+    const token = await createApiToken(page);
     const request = page.request;
-    const headers = await getApiHeaders(page);
+    const headers = bearerHeaders(token);
+
     const orgId = await getOrganizationId(request, headers);
     const memberId = await getCurrentMemberId(request, orgId, headers);
     return { request: createAuthenticatedRequest(request, headers), orgId, memberId };
@@ -424,6 +473,25 @@ export async function createTimeEntryWithTagViaApi(
     return { tag, entry };
 }
 
+export async function createRunningTimeEntryViaApi(ctx: TestContext, description: string) {
+    const start = new Date();
+    start.setMinutes(start.getMinutes() - 10);
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries`,
+        {
+            data: {
+                member_id: ctx.memberId,
+                start: formatTimestamp(start),
+                description,
+                billable: false,
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as { id: string; start: string; end: null; description: string };
+}
+
 export async function createBareTimeEntryViaApi(
     ctx: TestContext,
     description: string,
@@ -491,11 +559,17 @@ export async function updateOrganizationSettingViaApi(
 }
 
 export async function updateOrganizationCurrencyViaWeb(
+    page: Page,
     ctx: TestContext,
     currency: string,
     name: string = 'Test Organization'
 ) {
-    const response = await ctx.request.put(`${PLAYWRIGHT_BASE_URL}/teams/${ctx.orgId}`, {
+    const cookies = await page.context().cookies();
+    const xsrfCookie = cookies.find((c) => c.name === 'XSRF-TOKEN');
+    const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : '';
+
+    const response = await page.request.put(`${PLAYWRIGHT_BASE_URL}/teams/${ctx.orgId}`, {
+        headers: { 'X-XSRF-TOKEN': xsrfToken },
         data: { name, currency },
     });
     expect(response.status()).toBe(200);
@@ -529,7 +603,164 @@ export async function getInvitationsViaApi(ctx: TestContext) {
     const response = await ctx.request.get(
         `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/invitations`
     );
+
     expect(response.status()).toBe(200);
     const body = await response.json();
     return body.data as Array<{ id: string; email: string; role: string }>;
+}
+
+// ──────────────────────────────────────────────────
+// Timestamp-based time entry helpers
+// ──────────────────────────────────────────────────
+
+export async function createTimeEntryWithTimestampsViaApi(
+    ctx: TestContext,
+    data: {
+        description?: string;
+        start: string;
+        end: string;
+        projectId?: string | null;
+        taskId?: string | null;
+        tags?: string[];
+        billable?: boolean;
+    }
+) {
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries`,
+        {
+            data: {
+                member_id: ctx.memberId,
+                start: data.start,
+                end: data.end,
+                description: data.description ?? '',
+                project_id: data.projectId ?? null,
+                task_id: data.taskId ?? null,
+                tags: data.tags ?? [],
+                billable: data.billable ?? false,
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as { id: string; start: string; end: string; description: string };
+}
+
+// ──────────────────────────────────────────────────
+// User profile helpers
+// ──────────────────────────────────────────────────
+
+export async function updateUserProfileViaWeb(
+    page: Page,
+    settings: { timezone?: string; week_start?: string }
+) {
+    // Read user info from Inertia's data-page attribute on the root element
+    const userInfo = await page.evaluate(() => {
+        // Try Inertia's data-page attribute (stores initial page props as JSON)
+        const appEl = document.getElementById('app');
+        if (appEl) {
+            const dataPage = appEl.getAttribute('data-page');
+            if (dataPage) {
+                try {
+                    const parsed = JSON.parse(dataPage);
+                    const user = parsed?.props?.auth?.user;
+                    if (user) {
+                        return {
+                            name: user.name,
+                            email: user.email,
+                            timezone: user.timezone,
+                            week_start: user.week_start,
+                        };
+                    }
+                } catch {
+                    // JSON parse failed
+                }
+            }
+        }
+        return null;
+    });
+    if (!userInfo) throw new Error('Could not read user info from Inertia data-page attribute');
+
+    const cookies = await page.context().cookies();
+    const xsrfCookie = cookies.find((c) => c.name === 'XSRF-TOKEN');
+    const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : '';
+
+    const response = await page.request.put(`${PLAYWRIGHT_BASE_URL}/user/profile-information`, {
+        headers: {
+            'X-XSRF-TOKEN': xsrfToken,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        data: {
+            name: userInfo.name,
+            email: userInfo.email,
+            timezone: settings.timezone ?? userInfo.timezone,
+            week_start: settings.week_start ?? userInfo.week_start,
+        },
+    });
+    expect(response.status()).toBe(200);
+}
+
+// ──────────────────────────────────────────────────
+// Running time entry with specific start
+// ──────────────────────────────────────────────────
+
+export async function createRunningTimeEntryWithStartViaApi(
+    ctx: TestContext,
+    description: string,
+    start: string
+) {
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries`,
+        {
+            data: {
+                member_id: ctx.memberId,
+                start,
+                description,
+                billable: false,
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as { id: string; start: string; end: null; description: string };
+}
+
+// ──────────────────────────────────────────────────
+// Reports
+// ──────────────────────────────────────────────────
+
+export async function createReportViaApi(
+    ctx: TestContext,
+    data: {
+        name: string;
+        is_public?: boolean;
+        public_until?: string | null;
+    }
+) {
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/reports`,
+        {
+            data: {
+                name: data.name,
+                description: '',
+                is_public: data.is_public ?? true,
+                public_until: data.public_until ?? null,
+                properties: {
+                    start: '2024-01-01T00:00:00Z',
+                    end: '2030-12-31T23:59:59Z',
+                    group: 'project',
+                    sub_group: 'project',
+                    history_group: 'day',
+                },
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as {
+        id: string;
+        name: string;
+        is_public: boolean;
+        public_until: string | null;
+    };
 }

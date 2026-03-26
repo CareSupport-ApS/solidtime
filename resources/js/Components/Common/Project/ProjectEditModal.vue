@@ -20,11 +20,14 @@ import ProjectBillableRateModal from '@/packages/ui/src/Project/ProjectBillableR
 import { getOrganizationCurrencyString } from '@/utils/money';
 import ProjectEditBillableSection from '@/packages/ui/src/Project/ProjectEditBillableSection.vue';
 import { isAllowedToPerformPremiumAction } from '@/utils/billing';
+import { useOrganizationQuery } from '@/utils/useOrganizationQuery';
+import { getCurrentOrganizationId } from '@/utils/useUser';
 import { Checkbox } from '@/packages/ui/src';
 import InputLabel from '@/packages/ui/src/Input/InputLabel.vue';
 
 const { updateProject } = useProjectsStore();
 const { clients } = useClientsQuery();
+const { organization } = useOrganizationQuery(getCurrentOrganizationId()!);
 const show = defineModel('show', { default: false });
 const saving = ref(false);
 const showBillableRateModal = ref(false);
@@ -120,6 +123,7 @@ async function submitBillableRate() {
                     v-model:is-billable="project.is_billable"
                     v-model:billable-rate="project.billable_rate"
                     :currency="getOrganizationCurrencyString()"
+                    :organization-billable-rate="organization?.billable_rate ?? null"
                     @submit="submit"></ProjectEditBillableSection>
                 <EstimatedTimeSection
                     v-if="isAllowedToPerformPremiumAction()"
