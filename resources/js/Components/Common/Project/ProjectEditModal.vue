@@ -130,12 +130,8 @@ async function submitBillableRate() {
                     v-model="project.estimated_time"
                     @submit="submit()"></EstimatedTimeSection>
                 <div class="flex items-center space-x-2 pt-6">
-                    <Checkbox
-                        id="is_public"
-                        v-model:checked="project.is_public" />
-                    <InputLabel
-                        for="is_public"
-                        value="Project is public" />
+                    <Checkbox id="is_public" v-model:checked="project.is_public" />
+                    <InputLabel for="is_public" value="Project is public" />
                 </div>
             </FieldGroup>
         </template>

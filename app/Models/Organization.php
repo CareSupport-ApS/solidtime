@@ -191,6 +191,9 @@ class Organization extends JetstreamTeam implements AuditableContract
         return parent::findOrFail($id, $columns);
     }
 
+    /**
+     * @return Attribute<string, string>
+     */
     public function clientId(): Attribute
     {
         return Attribute::make(
@@ -199,6 +202,9 @@ class Organization extends JetstreamTeam implements AuditableContract
         );
     }
 
+    /**
+     * @return Attribute<string, string>
+     */
     public function secret(): Attribute
     {
         return Attribute::make(
@@ -207,6 +213,9 @@ class Organization extends JetstreamTeam implements AuditableContract
         );
     }
 
+    /**
+     * @return Attribute<string, string>
+     */
     public function tenantId(): Attribute
     {
         return Attribute::make(

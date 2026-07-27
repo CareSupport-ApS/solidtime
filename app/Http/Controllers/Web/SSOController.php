@@ -6,6 +6,8 @@ use App\Enums\Weekday;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Service\CustomLogicService;
+use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -13,12 +15,12 @@ use Laravel\Socialite\Facades\Socialite;
 
 class SSOController extends Controller
 {
-    public function login()
+    public function login(): SymfonyRedirectResponse
     {
         return Socialite::driver('azure')->redirect();
     }
 
-    public function callback(Request $request)
+    public function callback(Request $request): RedirectResponse
     {
         try{
             $azureUser = Socialite::driver('azure')->user();
@@ -31,7 +33,7 @@ class SSOController extends Controller
             session()->put('azure_login_attempts', $attemps + 1);
             return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
         }
-        if($azureUser === null || $azureUser->getEmail() === null) {
+        if($azureUser == null || $azureUser->getEmail() == null) {
             Log::info('Azure login failed: No user or email returned');
             return redirect('/login')->withErrors(['login' => 'Azure login failed. Please try again.']);
         }
@@ -62,7 +64,7 @@ class SSOController extends Controller
         return redirect()->intended('/');
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         Log::info('User logged out', ['user_id' => Auth::id()]);
         Auth::logout();

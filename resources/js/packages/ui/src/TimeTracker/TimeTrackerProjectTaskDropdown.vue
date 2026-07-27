@@ -198,8 +198,8 @@ function updateFilteredResults() {
         });
 
         const filteredTasks = projectTasks.filter((filterTask) => {
-            if(projectNameIncludesSearchTerm) {
-                return (!filterTask.is_done || filterTask.id === task.value);
+            if (projectNameIncludesSearchTerm) {
+                return !filterTask.is_done || filterTask.id === task.value;
             }
             return (
                 filterTask.name

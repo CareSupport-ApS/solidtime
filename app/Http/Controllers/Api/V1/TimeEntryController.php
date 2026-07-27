@@ -105,7 +105,7 @@ class TimeEntryController extends Controller
         else throw new ProjectNotSelectedApiException;
     }
 
-    private function checkTaskForced(Organization $organization, ?string $task_id, ?string $project_id, ?Project $project){
+    private function checkTaskForced(Organization $organization, ?string $task_id, ?string $project_id, ?Project $project): void{
         if(!$organization->prevent_time_entries_on_project_with_incomplete_tasks || !is_null($task_id)){
             return;
         }
@@ -686,14 +686,15 @@ class TimeEntryController extends Controller
             $client = $project?->client;
             $timeEntry->client()->associate($client);
         }
-        if(!is_null($request->input('end'))){
+
+        if(!is_null($request->input('end')) || !is_null($timeEntry->end)){
             $this->checkProjectSelected($organization, $timeEntry->project_id ?? null);
-            $this->checkTaskForced($organization, $timeEntry->task_id ?? $request->input('task_id'), $request->input('project_id') ?? $timeEntry->project_id, $project);
         }
         $task = null;
         if ($request->has('task_id')) {
             $task = $request->input('task_id') !== null ? Task::findOrFail((string) $request->input('task_id')) : null;
         }
+        $this->checkTaskForced($organization, $request->has('task_id') ? $request->input('task_id') : $timeEntry->task_id, $request->input('project_id') ?? $timeEntry->project_id, $project);
 
         $timeEntry->fill($request->validated());
         $timeEntry->description = $request->input('description', $timeEntry->description) ?? '';
@@ -762,6 +763,7 @@ class TimeEntryController extends Controller
         if ($request->has('changes.task_id')) {
             $task = $request->input('changes.task_id') !== null ? Task::findOrFail((string) $request->input('changes.task_id')) : null;
         }
+        $this->checkTaskForced($organization, $request->has('changes.task_id') ? $request->input('changes.task_id'):null, $request->has('changes.project_id') ? $request->input('changes.project_id'):null  , $project);
 
         $success = new Collection;
         $error = new Collection;
