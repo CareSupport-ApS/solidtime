@@ -118,15 +118,15 @@ watch(localEnd, (value) => {
 
 async function submit() {
     saving.value = true;
-    try{
+    try {
         await props.createTimeEntry({ ...timeEntry.value });
         timeEntry.value = { ...timeEntryDefaultValues };
         localStart.value = getLocalizedDayJs(timeEntryDefaultValues.start).format();
         localEnd.value = getLocalizedDayJs(timeEntryDefaultValues.end).format();
         show.value = false;
-    }catch (error) {
+    } catch (error) {
         console.error('Error creating time entry:', error);
-    }finally {
+    } finally {
         saving.value = false;
     }
 }

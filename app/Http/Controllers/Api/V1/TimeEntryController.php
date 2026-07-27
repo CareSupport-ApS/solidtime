@@ -105,7 +105,7 @@ class TimeEntryController extends Controller
         else throw new ProjectNotSelectedApiException;
     }
 
-    private function checkTaskForced(Organization $organization, ?string $task_id, ?string $project_id, ?Project $project){
+    private function checkTaskForced(Organization $organization, ?string $task_id, ?string $project_id, ?Project $project): void{
         if(!$organization->prevent_time_entries_on_project_with_incomplete_tasks || !is_null($task_id)){
             return;
         }
