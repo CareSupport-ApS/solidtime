@@ -170,10 +170,24 @@ function parseDurationToSeconds(duration: string): number {
     return totalSeconds;
 }
 
+/**
+ * Builds a start/end pair anchored to 09:00 UTC on today's UTC date.
+ *
+ * Intentionally pinned to UTC (rather than the runner's local time) so
+ * the produced timestamps are identical regardless of where the suite
+ * runs. Playwright test users default to UTC, so this matches what the
+ * app will see and keeps day-of-week / "this week" assertions stable
+ * for developers running the suite locally in non-UTC timezones.
+ */
 function createTimestamps(duration: string): { start: string; end: string } {
     const durationSeconds = parseDurationToSeconds(duration);
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+    const start = createUtcTimestampFromDateParts(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        9
+    );
     const end = new Date(start.getTime() + durationSeconds * 1000);
 
     return {
@@ -184,6 +198,32 @@ function createTimestamps(duration: string): { start: string; end: string } {
 
 function formatTimestamp(date: Date): string {
     return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function createUtcTimestampFromDateParts(
+    year: number,
+    month: number,
+    date: number,
+    hours: number,
+    minutes: number = 0,
+    seconds: number = 0
+): Date {
+    return new Date(Date.UTC(year, month, date, hours, minutes, seconds));
+}
+
+function createTimestampsOnDate(date: Date, duration: string): { start: string; end: string } {
+    const durationSeconds = parseDurationToSeconds(duration);
+    const start = createUtcTimestampFromDateParts(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        9
+    );
+    const end = new Date(start.getTime() + durationSeconds * 1000);
+    return {
+        start: formatTimestamp(start),
+        end: formatTimestamp(end),
+    };
 }
 
 function randomColor(): string {
@@ -317,7 +357,7 @@ export async function createProjectWithClientViaApi(
 
 export async function createTaskViaApi(
     ctx: TestContext,
-    data: { name: string; project_id: string }
+    data: { name: string; project_id: string; estimated_time?: number }
 ) {
     const response = await ctx.request.post(
         `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/tasks`,
@@ -325,12 +365,34 @@ export async function createTaskViaApi(
             data: {
                 name: data.name,
                 project_id: data.project_id,
+                ...(data.estimated_time !== undefined
+                    ? { estimated_time: data.estimated_time }
+                    : {}),
             },
         }
     );
     expect(response.status()).toBe(201);
     const body = await response.json();
-    return body.data as { id: string; name: string; project_id: string };
+    return body.data as {
+        id: string;
+        name: string;
+        project_id: string;
+        estimated_time: number | null;
+    };
+}
+
+export async function markTaskDoneViaApi(ctx: TestContext, task: { id: string; name: string }) {
+    const response = await ctx.request.put(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/tasks/${task.id}`,
+        {
+            data: {
+                name: task.name,
+                is_done: true,
+            },
+        }
+    );
+    expect(response.status()).toBe(200);
+    return (await response.json()).data;
 }
 
 export async function createTagViaApi(ctx: TestContext, data: { name: string }) {
@@ -352,9 +414,44 @@ export async function createTimeEntryViaApi(
         taskId?: string | null;
         tags?: string[];
         billable?: boolean;
+        type?: 'work' | 'break';
     }
 ) {
     const { start, end } = createTimestamps(data.duration);
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries`,
+        {
+            data: {
+                member_id: ctx.memberId,
+                start,
+                end,
+                description: data.description ?? '',
+                project_id: data.projectId ?? null,
+                task_id: data.taskId ?? null,
+                tags: data.tags ?? [],
+                billable: data.billable ?? false,
+                type: data.type ?? 'work',
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as { id: string; start: string; end: string; description: string };
+}
+
+export async function createTimeEntryOnDateViaApi(
+    ctx: TestContext,
+    data: {
+        date: Date;
+        duration: string;
+        description?: string;
+        projectId?: string | null;
+        taskId?: string | null;
+        tags?: string[];
+        billable?: boolean;
+    }
+) {
+    const { start, end } = createTimestampsOnDate(data.date, data.duration);
     const response = await ctx.request.post(
         `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries`,
         {
@@ -568,10 +665,13 @@ export async function updateOrganizationCurrencyViaWeb(
     const xsrfCookie = cookies.find((c) => c.name === 'XSRF-TOKEN');
     const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : '';
 
-    const response = await page.request.put(`${PLAYWRIGHT_BASE_URL}/teams/${ctx.orgId}`, {
-        headers: { 'X-XSRF-TOKEN': xsrfToken },
-        data: { name, currency },
-    });
+    const response = await page.request.put(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}`,
+        {
+            headers: { 'X-XSRF-TOKEN': xsrfToken },
+            data: { name, currency },
+        }
+    );
     expect(response.status()).toBe(200);
 }
 
@@ -613,6 +713,73 @@ export async function getInvitationsViaApi(ctx: TestContext) {
 // Timestamp-based time entry helpers
 // ──────────────────────────────────────────────────
 
+/**
+ * Creates a time entry on `date` at a specific UTC hour with a duration
+ * in seconds. Playwright test users default to the UTC timezone, so this
+ * keeps time-placement scenarios stable across runner locales.
+ */
+export async function createTimeEntryAtHourViaApi(
+    ctx: TestContext,
+    data: {
+        date: Date;
+        startHour: number;
+        startMinute?: number;
+        durationSeconds: number;
+        projectId?: string | null;
+        taskId?: string | null;
+        description?: string;
+    }
+) {
+    const start = createUtcTimestampFromDateParts(
+        data.date.getUTCFullYear(),
+        data.date.getUTCMonth(),
+        data.date.getUTCDate(),
+        data.startHour,
+        data.startMinute ?? 0
+    );
+    const end = new Date(start.getTime() + data.durationSeconds * 1000);
+    return createTimeEntryWithTimestampsViaApi(ctx, {
+        start: formatTimestamp(start),
+        end: formatTimestamp(end),
+        projectId: data.projectId ?? null,
+        taskId: data.taskId ?? null,
+        description: data.description ?? '',
+    });
+}
+
+/**
+ * Reads time entries for the current member, optionally filtered to a
+ * date range. Returns the raw API objects (id, start, end, project_id,
+ * etc.) so tests can assert on the database state after a UI action.
+ */
+export async function getTimeEntriesViaApi(
+    ctx: TestContext,
+    filters: { start?: string; end?: string } = {}
+): Promise<
+    Array<{
+        id: string;
+        start: string;
+        end: string | null;
+        duration: number | null;
+        project_id: string | null;
+        task_id: string | null;
+        description: string;
+        type: 'work' | 'break';
+    }>
+> {
+    const params = new URLSearchParams();
+    params.set('member_id', ctx.memberId);
+    if (filters.start) params.set('start', filters.start);
+    if (filters.end) params.set('end', filters.end);
+
+    const response = await ctx.request.get(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/time-entries?${params.toString()}`
+    );
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    return body.data;
+}
+
 export async function createTimeEntryWithTimestampsViaApi(
     ctx: TestContext,
     data: {
@@ -623,6 +790,7 @@ export async function createTimeEntryWithTimestampsViaApi(
         taskId?: string | null;
         tags?: string[];
         billable?: boolean;
+        type?: 'work' | 'break';
     }
 ) {
     const response = await ctx.request.post(
@@ -637,65 +805,55 @@ export async function createTimeEntryWithTimestampsViaApi(
                 task_id: data.taskId ?? null,
                 tags: data.tags ?? [],
                 billable: data.billable ?? false,
+                type: data.type ?? 'work',
             },
         }
     );
     expect(response.status()).toBe(201);
     const body = await response.json();
-    return body.data as { id: string; start: string; end: string; description: string };
+    return body.data as {
+        id: string;
+        start: string;
+        end: string;
+        description: string;
+        type: 'work' | 'break';
+    };
 }
 
 // ──────────────────────────────────────────────────
 // User profile helpers
 // ──────────────────────────────────────────────────
 
-export async function updateUserProfileViaWeb(
-    page: Page,
+export async function getCurrentUserViaApi(ctx: TestContext) {
+    const response = await ctx.request.get(`${PLAYWRIGHT_BASE_URL}/api/v1/users/me`);
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    return body.data as {
+        id: string;
+        name: string;
+        email: string;
+        timezone: string;
+        week_start: string;
+    };
+}
+
+export async function updateUserProfileViaApi(
+    ctx: TestContext,
     settings: { timezone?: string; week_start?: string }
 ) {
-    // Read user info from Inertia's data-page attribute on the root element
-    const userInfo = await page.evaluate(() => {
-        // Try Inertia's data-page attribute (stores initial page props as JSON)
-        const appEl = document.getElementById('app');
-        if (appEl) {
-            const dataPage = appEl.getAttribute('data-page');
-            if (dataPage) {
-                try {
-                    const parsed = JSON.parse(dataPage);
-                    const user = parsed?.props?.auth?.user;
-                    if (user) {
-                        return {
-                            name: user.name,
-                            email: user.email,
-                            timezone: user.timezone,
-                            week_start: user.week_start,
-                        };
-                    }
-                } catch {
-                    // JSON parse failed
-                }
-            }
-        }
-        return null;
-    });
-    if (!userInfo) throw new Error('Could not read user info from Inertia data-page attribute');
+    const user = await getCurrentUserViaApi(ctx);
 
-    const cookies = await page.context().cookies();
-    const xsrfCookie = cookies.find((c) => c.name === 'XSRF-TOKEN');
-    const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : '';
+    // Only send the fields under test; the endpoint leaves omitted fields untouched.
+    const data: Record<string, string> = {};
+    if (settings.timezone !== undefined) {
+        data.timezone = settings.timezone;
+    }
+    if (settings.week_start !== undefined) {
+        data.week_start = settings.week_start;
+    }
 
-    const response = await page.request.put(`${PLAYWRIGHT_BASE_URL}/user/profile-information`, {
-        headers: {
-            'X-XSRF-TOKEN': xsrfToken,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        },
-        data: {
-            name: userInfo.name,
-            email: userInfo.email,
-            timezone: settings.timezone ?? userInfo.timezone,
-            week_start: settings.week_start ?? userInfo.week_start,
-        },
+    const response = await ctx.request.put(`${PLAYWRIGHT_BASE_URL}/api/v1/users/${user.id}`, {
+        data,
     });
     expect(response.status()).toBe(200);
 }
@@ -763,4 +921,72 @@ export async function createReportViaApi(
         is_public: boolean;
         public_until: string | null;
     };
+}
+
+// ──────────────────────────────────────────────────
+// Invoices
+// ──────────────────────────────────────────────────
+
+export async function createInvoiceViaApi(
+    ctx: TestContext,
+    data: {
+        reference: string;
+        buyer_name?: string;
+        seller_name?: string;
+        currency?: string;
+        date?: string;
+        tax_rate?: number;
+    }
+) {
+    const response = await ctx.request.post(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/invoices`,
+        {
+            data: {
+                seller_name: data.seller_name ?? 'Test Seller',
+                buyer_name: data.buyer_name ?? 'Test Buyer',
+                reference: data.reference,
+                currency: data.currency ?? 'EUR',
+                date: data.date ?? new Date().toISOString().split('T')[0],
+                // Mirror the UI create form, which always sends a tax rate (default 0).
+                // Invoices with a null tax_rate currently crash PDF rendering.
+                tax_rate: data.tax_rate ?? 0,
+            },
+        }
+    );
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    return body.data as { id: string; reference: string; buyer_name: string };
+}
+
+export async function updateInvoiceSettingsViaApi(ctx: TestContext, data: Record<string, unknown>) {
+    const response = await ctx.request.put(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/invoice-settings`,
+        { data }
+    );
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    return body.data as Record<string, unknown>;
+}
+
+export async function getInvoiceSettingsViaApi(ctx: TestContext) {
+    const response = await ctx.request.get(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/invoice-settings`
+    );
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    return body.data as Record<string, unknown>;
+}
+
+export async function getInvoicesViaApi(ctx: TestContext) {
+    const response = await ctx.request.get(
+        `${PLAYWRIGHT_BASE_URL}/api/v1/organizations/${ctx.orgId}/invoices`
+    );
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    return body.data as Array<{
+        id: string;
+        reference: string;
+        buyer_name: string;
+        paid_date: string | null;
+    }>;
 }

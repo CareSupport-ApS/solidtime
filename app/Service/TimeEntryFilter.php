@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Enums\TagMatchType;
+use App\Enums\TimeEntryType;
 use App\Models\Member;
 use App\Models\TimeEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,7 +64,7 @@ class TimeEntryFilter
         if ($start === null) {
             return $this;
         }
-        $this->builder->where('start', '>', $start);
+        $this->builder->where('start', '>=', $start);
 
         return $this;
     }
@@ -143,6 +145,32 @@ class TimeEntryFilter
         return $this;
     }
 
+    public function addTypeFilter(?string $type): self
+    {
+        if ($type === null) {
+            return $this;
+        }
+        $typeEnum = TimeEntryType::tryFrom($type);
+        if ($typeEnum === null) {
+            Log::warning('Invalid type filter value', ['value' => $type]);
+
+            return $this;
+        }
+        $this->addType($typeEnum);
+
+        return $this;
+    }
+
+    public function addType(?TimeEntryType $type): self
+    {
+        if ($type === null) {
+            return $this;
+        }
+        $this->builder->where('type', '=', $type->value);
+
+        return $this;
+    }
+
     /**
      * @param  array<string>|null  $clientIds
      */
@@ -192,15 +220,21 @@ class TimeEntryFilter
     /**
      * @param  array<string>|null  $tagIds
      */
-    public function addTagIdsFilter(?array $tagIds): self
+    public function addTagIdsFilter(?array $tagIds, ?TagMatchType $tagMatchType = TagMatchType::Contains): self
     {
         if ($tagIds === null) {
             return $this;
         }
+        $tagMatchType ??= TagMatchType::Contains;
         $includeNone = in_array(self::NONE_VALUE, $tagIds, true);
         $tagIds = array_values(array_filter($tagIds, fn (string $id): bool => $id !== self::NONE_VALUE));
+        // An empty selection (no tag IDs and not filtering for "none") is no constraint, so apply nothing.
+        // This also prevents the not-contains branch from collapsing into "only entries with null tags".
+        if (count($tagIds) === 0 && ! $includeNone) {
+            return $this;
+        }
 
-        $this->builder->where(function (Builder $builder) use ($tagIds, $includeNone): void {
+        $tagCondition = function (Builder $builder) use ($tagIds, $includeNone): void {
             foreach ($tagIds as $tagId) {
                 $builder->orWhereJsonContains('tags', $tagId);
             }
@@ -209,7 +243,18 @@ class TimeEntryFilter
                     $query->whereJsonLength('tags', 0)->orWhereNull('tags');
                 });
             }
-        });
+        };
+
+        if ($tagMatchType === TagMatchType::NotContains) {
+            $this->builder->where(function (Builder $builder) use ($tagCondition, $includeNone): void {
+                $builder->whereNot($tagCondition);
+                if (! $includeNone) {
+                    $builder->orWhereNull('tags');
+                }
+            });
+        } else {
+            $this->builder->where($tagCondition);
+        }
 
         return $this;
     }

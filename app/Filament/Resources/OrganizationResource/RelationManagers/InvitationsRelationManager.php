@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
 
 class InvitationsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'teamInvitations';
+    protected static string $relationship = 'organizationInvitations';
 
     protected static ?string $title = 'Invitations';
 
@@ -64,7 +64,7 @@ class InvitationsRelationManager extends RelationManager
                         $ownerRecord = $this->getOwnerRecord();
 
                         return app(InvitationService::class)
-                            ->inviteUser($ownerRecord, $data['email'], Role::from($data['role']));
+                            ->inviteUser($ownerRecord, $data['email'], Role::from($data['role']), auth()->user());
                     }),
             ])
             ->actions([

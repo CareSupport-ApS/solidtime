@@ -61,6 +61,7 @@ class MemberController extends Controller
             ->whereBelongsTo($organization, 'organization')
             ->with(['user'])
             ->orderBy('created_at', 'desc')
+            ->orderBy('id')
             ->paginate(config('app.pagination_per_page_default'));
 
         return MemberCollection::make($members);
@@ -192,7 +193,7 @@ class MemberController extends Controller
             throw new ThisPlaceholderCanNotBeInvitedUseTheMergeToolInsteadException;
         }
 
-        $invitationService->inviteUser($organization, $user->email, Role::Employee);
+        $invitationService->inviteUser($organization, $user->email, Role::Employee, $this->user());
 
         return response()->json(null, 204);
     }

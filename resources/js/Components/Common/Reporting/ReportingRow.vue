@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatHumanReadableDuration } from '@/packages/ui/src/utils/time';
+import { formatReportingDuration } from '@/packages/ui/src/utils/time';
 import { formatCents } from '@/packages/ui/src/utils/money';
 import GroupedItemsCountButton from '@/packages/ui/src/GroupedItemsCountButton.vue';
 import { ref, inject, type ComputedRef } from 'vue';
@@ -11,6 +11,7 @@ type AggregatedGroupedData = GroupedData & {
 };
 
 type GroupedData = {
+    key: string | null;
     seconds: number;
     cost: number | null;
     description: string | null | undefined;
@@ -44,7 +45,7 @@ const organization = inject<ComputedRef<Organization>>('organization');
         </div>
         <div class="justify-end flex items-center" :class="!showCost ? 'pr-6' : ''">
             {{
-                formatHumanReadableDuration(
+                formatReportingDuration(
                     entry.seconds,
                     organization?.interval_format,
                     organization?.number_format
@@ -72,7 +73,7 @@ const organization = inject<ComputedRef<Organization>>('organization');
         :style="`grid-template-columns: 1fr 150px ${showCost ? '150px' : ''}`">
         <ReportingRow
             v-for="subEntry in entry.grouped_data"
-            :key="subEntry.description ?? 'none'"
+            :key="subEntry.key ?? 'none'"
             :currency="props.currency"
             :show-cost="showCost"
             indent

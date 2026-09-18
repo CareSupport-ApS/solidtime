@@ -7,6 +7,8 @@ import {
     PencilSquareIcon,
     ArchiveBoxIcon as ArchiveBoxIconSolid,
     TrashIcon,
+    GlobeAltIcon,
+    LockClosedIcon,
 } from '@heroicons/vue/20/solid';
 import { useClientsQuery } from '@/utils/useClientsQuery';
 import { useTasksQuery } from '@/utils/useTasksQuery';
@@ -72,7 +74,7 @@ const billableRateInfo = computed(() => {
             return 'Default Rate';
         }
     }
-    return '--';
+    return null;
 });
 
 const showEditProjectModal = ref(false);
@@ -86,25 +88,25 @@ const showEditProjectModal = ref(false);
         <ContextMenuTrigger as-child>
             <TableRow :href="route('projects.show', { project: project.id })">
                 <div
-                    class="whitespace-nowrap min-w-0 flex items-center space-x-5 3xl:pl-12 py-4 pr-3 text-sm font-medium text-text-primary pl-4 sm:pl-6 lg:pl-8 3xl:pl-12">
+                    class="whitespace-nowrap min-w-0 flex items-center space-x-5 py-4 pr-3 text-sm font-medium text-text-primary pl-2 sm:pl-4 lg:pl-6">
                     <div
                         :style="{
                             backgroundColor: project.color,
                             boxShadow: `var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) ${project.color}30`,
                         }"
-                        class="w-3 h-3 rounded-full"></div>
+                        class="w-3 h-3 ml-1 rounded-full"></div>
                     <span class="overflow-ellipsis overflow-hidden">
                         {{ project.name }}
                     </span>
                     <span class="text-text-secondary"> {{ projectTasksCount }} Tasks </span>
                 </div>
-                <div class="whitespace-nowrap min-w-0 px-3 py-4 text-sm text-text-secondary">
+                <div class="whitespace-nowrap min-w-0 px-3 py-4 text-sm text-text-primary">
                     <div v-if="project.client_id" class="overflow-ellipsis overflow-hidden">
                         {{ client?.name }}
                     </div>
-                    <div v-else>No client</div>
+                    <div v-else class="text-text-tertiary">No client</div>
                 </div>
-                <div class="whitespace-nowrap px-3 py-4 text-sm text-text-secondary">
+                <div class="whitespace-nowrap px-3 py-4 text-sm text-text-primary">
                     <div v-if="project.spent_time">
                         {{
                             formatHumanReadableDuration(
@@ -114,23 +116,24 @@ const showEditProjectModal = ref(false);
                             )
                         }}
                     </div>
-                    <div v-else>--</div>
+                    <div v-else class="text-text-tertiary">--</div>
                 </div>
-                <div class="whitespace-nowrap px-3 flex items-center text-sm text-text-secondary">
+                <div class="whitespace-nowrap px-3 flex items-center text-sm text-text-primary">
                     <UpgradeBadge v-if="!isAllowedToPerformPremiumAction()"></UpgradeBadge>
                     <EstimatedTimeProgress
                         v-else-if="project.estimated_time"
                         :estimated="project.estimated_time"
                         :current="project.spent_time"></EstimatedTimeProgress>
-                    <span v-else> -- </span>
+                    <span v-else class="text-text-tertiary"> -- </span>
                 </div>
                 <div
                     v-if="showBillableRate"
-                    class="whitespace-nowrap px-3 py-4 text-sm text-text-secondary">
-                    {{ billableRateInfo }}
+                    class="whitespace-nowrap px-3 py-4 text-sm text-text-primary">
+                    <span v-if="billableRateInfo">{{ billableRateInfo }}</span>
+                    <span v-else class="text-text-tertiary">--</span>
                 </div>
                 <div
-                    class="whitespace-nowrap px-3 py-4 text-sm text-text-secondary flex space-x-1.5 items-center font-medium">
+                    class="whitespace-nowrap px-3 py-4 text-sm text-text-primary flex space-x-1.5 items-center font-medium">
                     <template v-if="project.is_archived">
                         <ArchiveBoxIcon class="w-4 text-icon-default"></ArchiveBoxIcon>
                         <span>Archived</span>
@@ -141,7 +144,18 @@ const showEditProjectModal = ref(false);
                     </template>
                 </div>
                 <div
-                    class="relative whitespace-nowrap flex items-center pl-3 text-right text-sm font-medium pr-4 sm:pr-6 lg:pr-8 3xl:pr-12">
+                    class="whitespace-nowrap px-3 py-4 text-sm text-text-primary flex space-x-1.5 items-center font-medium">
+                    <template v-if="project.is_public">
+                        <GlobeAltIcon class="w-4 text-icon-default"></GlobeAltIcon>
+                        <span>Public</span>
+                    </template>
+                    <template v-else>
+                        <LockClosedIcon class="w-4 text-icon-default"></LockClosedIcon>
+                        <span>Private</span>
+                    </template>
+                </div>
+                <div
+                    class="relative whitespace-nowrap flex items-center pl-3 text-right text-sm font-medium pr-2 sm:pr-4 lg:pr-6">
                     <ProjectMoreOptionsDropdown
                         :project="project"
                         @edit="showEditProjectModal = true"

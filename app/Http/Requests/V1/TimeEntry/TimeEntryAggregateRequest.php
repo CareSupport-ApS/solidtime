@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\V1\TimeEntry;
 
+use App\Enums\TagMatchType;
 use App\Enums\TimeEntryAggregationType;
 use App\Enums\TimeEntryRoundingType;
+use App\Enums\TimeEntryType;
 use App\Http\Requests\V1\BaseFormRequest;
 use App\Models\Client;
 use App\Models\Member;
@@ -125,6 +127,10 @@ class TimeEntryAggregateRequest extends BaseFormRequest
                     })->uuid()->validate($attribute, $value, $fail);
                 },
             ],
+            'tag_match_type' => [
+                'string',
+                Rule::enum(TagMatchType::class),
+            ],
             // Filter by task IDs, task IDs are OR combined
             'task_ids' => [
                 'array',
@@ -163,6 +169,11 @@ class TimeEntryAggregateRequest extends BaseFormRequest
             'billable' => [
                 'string',
                 'in:true,false',
+            ],
+            // Filter by time entry type
+            'type' => [
+                'string',
+                Rule::enum(TimeEntryType::class),
             ],
             'fill_gaps_in_time_groups' => [
                 'string',
@@ -206,6 +217,15 @@ class TimeEntryAggregateRequest extends BaseFormRequest
     public function getEnd(): ?Carbon
     {
         return $this->input('end') !== null ? Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $this->input('end'), 'UTC') : null;
+    }
+
+    public function getTagMatchType(): ?TagMatchType
+    {
+        if (! $this->has('tag_match_type') || $this->validated('tag_match_type') === null) {
+            return null;
+        }
+
+        return TagMatchType::from($this->validated('tag_match_type'));
     }
 
     public function getRoundingType(): ?TimeEntryRoundingType

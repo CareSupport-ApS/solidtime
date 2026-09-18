@@ -50,12 +50,16 @@ class DetailedReportResource extends BaseResource
                 'member_ids' => $this->resource->properties->memberIds?->toArray(),
                 /** @var bool|null $billable Filter by billable status */
                 'billable' => $this->resource->properties->billable,
+                /** @var string|null $time_entry_type Filter by time entry type */
+                'time_entry_type' => $this->resource->properties->timeEntryType?->value,
                 /** @var array<string>|null $client_ids Filter by client IDs, client IDs are OR combined */
                 'client_ids' => $this->resource->properties->clientIds?->toArray(),
                 /** @var array<string>|null $project_ids Filter by project IDs, project IDs are OR combined */
                 'project_ids' => $this->resource->properties->projectIds?->toArray(),
                 /** @var array<string>|null $tags_ids Filter by tag IDs, tag IDs are OR combined */
                 'tag_ids' => $this->resource->properties->tagIds?->toArray(),
+                /** @var string|null $tag_match_type Tag match type */
+                'tag_match_type' => $this->resource->properties->tagMatchType?->value,
                 /** @var array<string>|null $task_ids Filter by task IDs, task IDs are OR combined */
                 'task_ids' => $this->resource->properties->taskIds?->toArray(),
                 /** @var string|null $rounding_type Rounding type for time entries */

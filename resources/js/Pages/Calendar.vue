@@ -3,6 +3,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { useTimeEntriesCalendarQuery } from '@/utils/useTimeEntriesCalendarQuery';
 import { useTimeEntriesMutations } from '@/utils/useTimeEntriesMutations';
 import { computed, ref, onMounted } from 'vue';
+import type { Dayjs } from 'dayjs';
 import { useQueryClient } from '@tanstack/vue-query';
 import {
     type Client,
@@ -27,8 +28,11 @@ import { useOrganizationQuery } from '@/utils/useOrganizationQuery';
 import { getCurrentOrganizationId } from '@/utils/useUser';
 
 const { organization } = useOrganizationQuery(getCurrentOrganizationId()!);
-const calendarStart = ref<Date | undefined>(undefined);
-const calendarEnd = ref<Date | undefined>(undefined);
+const calendarStart = ref<Dayjs | undefined>(undefined);
+const calendarEnd = ref<Dayjs | undefined>(undefined);
+
+// Optional deep link (e.g. "Fix in calendar") that opens the calendar on a specific day
+const initialDate = new URLSearchParams(window.location.search).get('date');
 
 // Test-injectable activity periods (for E2E testing).
 // These hooks are no-ops in production — they only take effect when test code
@@ -99,7 +103,7 @@ const { tags } = useTagsQuery();
 
 const queryClient = useQueryClient();
 
-function onDatesChange({ start, end }: { start: Date; end: Date }) {
+function onDatesChange({ start, end }: { start: Dayjs; end: Dayjs }) {
     calendarStart.value = start;
     calendarEnd.value = end;
 }
@@ -127,6 +131,7 @@ function onRefresh() {
             :enable-estimated-time="isAllowedToPerformPremiumAction()"
             :currency="getOrganizationCurrencyString()"
             :can-create-project="canCreateProjects()"
+            :initial-date="initialDate"
             :organization-billable-rate="organization?.billable_rate ?? null"
             :create-time-entry="createTimeEntry"
             :update-time-entry="updateTimeEntry"

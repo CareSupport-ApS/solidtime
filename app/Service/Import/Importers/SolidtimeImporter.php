@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Import\Importers;
 
 use App\Enums\Role;
+use App\Enums\TimeEntryType;
 use App\Jobs\RecalculateSpentTimeForProject;
 use App\Jobs\RecalculateSpentTimeForTask;
 use App\Models\TimeEntry;
@@ -15,7 +16,6 @@ use Illuminate\Support\Str;
 use League\Csv\Reader;
 use Override;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
-use ZipArchive;
 
 class SolidtimeImporter extends DefaultImporter
 {
@@ -33,16 +33,10 @@ class SolidtimeImporter extends DefaultImporter
         $temporaryDirectoryZip = null;
         $temporaryDirectory = null;
         try {
-            $zip = new ZipArchive;
             $temporaryDirectoryZip = TemporaryDirectory::make();
             file_put_contents($temporaryDirectoryZip->path('import.zip'), $data);
-            $res = $zip->open($temporaryDirectoryZip->path('import.zip'), ZipArchive::RDONLY);
-            if ($res !== true) {
-                throw new ImportException('Invalid ZIP, error code: '.$res);
-            }
             $temporaryDirectory = TemporaryDirectory::make();
-            $zip->extractTo($temporaryDirectory->path());
-            $zip->close();
+            app(ZipImportHelper::class)->extract($temporaryDirectoryZip->path('import.zip'), $temporaryDirectory->path());
 
             if (! file_exists($temporaryDirectory->path('meta.json'))) {
                 throw new ImportException('File "meta.json" missing in ZIP');
@@ -255,6 +249,14 @@ class SolidtimeImporter extends DefaultImporter
                     throw new ImportException('Invalid billable value');
                 }
                 $timeEntry->billable = $timeEntryRow['billable'] === 'true';
+                // The type column does not exist in old exports
+                if (($timeEntryRow['type'] ?? '') !== '') {
+                    $type = TimeEntryType::tryFrom($timeEntryRow['type']);
+                    if ($type === null) {
+                        throw new ImportException('Invalid type value');
+                    }
+                    $timeEntry->type = $type;
+                }
                 $timeEntry->tags = $this->getTags($timeEntryRow['tags']);
                 $timeEntry->is_imported = true;
 

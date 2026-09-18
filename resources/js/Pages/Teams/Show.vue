@@ -4,7 +4,7 @@ import DeleteTeamForm from '@/Pages/Teams/Partials/DeleteTeamForm.vue';
 import SectionBorder from '@/Components/SectionBorder.vue';
 import UpdateTeamNameForm from '@/Pages/Teams/Partials/UpdateTeamNameForm.vue';
 import type { Organization } from '@/types/models';
-import type { Permissions, Role } from '@/types/jetstream';
+import type { Permissions } from '@/types/jetstream';
 import OrganizationBillableRate from '@/Pages/Teams/Partials/OrganizationBillableRate.vue';
 import OrganizationFormatSettings from '@/Pages/Teams/Partials/OrganizationFormatSettings.vue';
 import OrganizationTimeEntrySettings from '@/Pages/Teams/Partials/OrganizationTimeEntrySettings.vue';
@@ -14,7 +14,6 @@ import { storeToRefs } from 'pinia';
 
 defineProps<{
     team: Organization;
-    availableRoles: Role[];
     permissions: Permissions;
 }>();
 
@@ -44,17 +43,17 @@ onMounted(async () => {
                 <template v-else>
                     <UpdateTeamNameForm :team="team" :permissions="permissions" />
 
-                    <SectionBorder />
+                    <SectionBorder v-if="permissions.canUpdateTeam" />
                     <OrganizationBillableRate v-if="permissions.canUpdateTeam" :team="team" />
-                    <SectionBorder />
 
+                    <SectionBorder v-if="permissions.canUpdateTeam" />
                     <OrganizationFormatSettings v-if="permissions.canUpdateTeam" :team="team" />
-                    <SectionBorder />
 
+                    <SectionBorder v-if="permissions.canUpdateTeam" />
                     <OrganizationTimeEntrySettings v-if="permissions.canUpdateTeam" />
-                    <SectionBorder />
 
-                    <template v-if="permissions.canDeleteTeam && !team.personal_team">
+                    <template v-if="permissions.canDeleteTeam">
+                        <SectionBorder />
                         <DeleteTeamForm class="mt-10 sm:mt-0" :team="team" />
                     </template>
                 </template>

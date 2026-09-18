@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests\V1\TimeEntry;
 
 use App\Enums\ExportFormat;
+use App\Enums\TagMatchType;
 use App\Enums\TimeEntryRoundingType;
+use App\Enums\TimeEntryType;
 use App\Models\Client;
 use App\Models\Member;
 use App\Models\Organization;
@@ -110,6 +112,10 @@ class TimeEntryIndexExportRequest extends TimeEntryIndexRequest
                     })->uuid()->validate($attribute, $value, $fail);
                 },
             ],
+            'tag_match_type' => [
+                'string',
+                Rule::enum(TagMatchType::class),
+            ],
             // Filter by task IDs, task IDs are OR combined
             'task_ids' => [
                 'array',
@@ -149,6 +155,11 @@ class TimeEntryIndexExportRequest extends TimeEntryIndexRequest
             'billable' => [
                 'string',
                 'in:true,false',
+            ],
+            // Filter by time entry type
+            'type' => [
+                'string',
+                Rule::enum(TimeEntryType::class),
             ],
             // Limit the number of returned time entries (default: 150)
             'limit' => [
@@ -213,6 +224,15 @@ class TimeEntryIndexExportRequest extends TimeEntryIndexRequest
     public function getFormatValue(): ExportFormat
     {
         return ExportFormat::from($this->validated('format'));
+    }
+
+    public function getTagMatchType(): ?TagMatchType
+    {
+        if (! $this->has('tag_match_type') || $this->validated('tag_match_type') === null) {
+            return null;
+        }
+
+        return TagMatchType::from($this->validated('tag_match_type'));
     }
 
     public function getRoundingType(): ?TimeEntryRoundingType

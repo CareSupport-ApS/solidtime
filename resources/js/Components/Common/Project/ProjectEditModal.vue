@@ -12,13 +12,14 @@ import ClientDropdown from '@/packages/ui/src/Client/ClientDropdown.vue';
 import { useClientsQuery } from '@/utils/useClientsQuery';
 import ProjectColorSelector from '@/packages/ui/src/Project/ProjectColorSelector.vue';
 import { Button } from '@/packages/ui/src/Buttons';
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronDown } from '@lucide/vue';
 import { UserCircleIcon } from '@heroicons/vue/20/solid';
 import EstimatedTimeSection from '@/packages/ui/src/EstimatedTimeSection.vue';
 import { Field, FieldGroup, FieldLabel } from '@/packages/ui/src/field';
 import ProjectBillableRateModal from '@/packages/ui/src/Project/ProjectBillableRateModal.vue';
 import { getOrganizationCurrencyString } from '@/utils/money';
 import ProjectEditBillableSection from '@/packages/ui/src/Project/ProjectEditBillableSection.vue';
+import ProjectVisibilitySelect from '@/packages/ui/src/Project/ProjectVisibilitySelect.vue';
 import { isAllowedToPerformPremiumAction } from '@/utils/billing';
 import { useOrganizationQuery } from '@/utils/useOrganizationQuery';
 import { getCurrentOrganizationId } from '@/utils/useUser';
@@ -129,10 +130,7 @@ async function submitBillableRate() {
                     v-if="isAllowedToPerformPremiumAction()"
                     v-model="project.estimated_time"
                     @submit="submit()"></EstimatedTimeSection>
-                <div class="flex items-center space-x-2 pt-6">
-                    <Checkbox id="is_public" v-model:checked="project.is_public" />
-                    <InputLabel for="is_public" value="Project is public" />
-                </div>
+                <ProjectVisibilitySelect v-model="project.is_public"></ProjectVisibilitySelect>
             </FieldGroup>
         </template>
         <template #footer>

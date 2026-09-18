@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TagController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TimeEntryController;
+use App\Http\Controllers\Api\V1\TimeZoneController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\UserMembershipController;
 use App\Http\Controllers\Api\V1\UserTimeEntryController;
@@ -42,8 +43,10 @@ Route::prefix('v1')->name('v1.')->group(static function (): void {
     ])->group(static function (): void {
         // Organization routes
         Route::name('organizations.')->group(static function (): void {
+            Route::post('/organizations', [OrganizationController::class, 'store'])->name('store');
             Route::get('/organizations/{organization}', [OrganizationController::class, 'show'])->name('show');
             Route::put('/organizations/{organization}', [OrganizationController::class, 'update'])->name('update');
+            Route::delete('/organizations/{organization}', [OrganizationController::class, 'destroy'])->name('destroy');
         });
 
         // Member routes
@@ -59,6 +62,11 @@ Route::prefix('v1')->name('v1.')->group(static function (): void {
         // User routes
         Route::name('users.')->group(static function (): void {
             Route::get('/users/me', [UserController::class, 'me'])->name('me');
+            Route::put('/users/me/current-organization', [UserController::class, 'updateMyCurrentOrganization'])->name('update-current-organization');
+            Route::put('/users/{user}', [UserController::class, 'update'])->name('update');
+            Route::post('/users/{user}/resend-email-verification', [UserController::class, 'resendEmailVerification'])->name('resend-email-verification');
+            Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('destroy');
+            Route::post('/users/{user}/reset-pending-email', [UserController::class, 'resetPendingEmail'])->name('reset-pending-email');
         });
 
         // Api token routes
@@ -173,9 +181,14 @@ Route::prefix('v1')->name('v1.')->group(static function (): void {
         Route::name('export.')->prefix('/organizations/{organization}')->group(static function (): void {
             Route::post('/export', [ExportController::class, 'export'])->name('export');
         });
+
     });
 
+    // Currency routes
     Route::get('/currencies', [CurrencyController::class, 'index'])->name('currencies.index');
+
+    // Timezone routes
+    Route::get('/time-zones', [TimeZoneController::class, 'index'])->name('time-zones.index');
 
     // Public routes
     Route::name('public.')->prefix('/public')->group(static function (): void {

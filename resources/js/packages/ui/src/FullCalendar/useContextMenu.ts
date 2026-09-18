@@ -1,8 +1,8 @@
 import { ref, type Ref, type ComputedRef } from 'vue';
 import type { Dayjs } from 'dayjs';
 import type { TimeEntry } from '@/packages/api/src';
-import { getDayJsInstance } from '../utils/time';
-import { getUserTimezone } from '../utils/settings';
+import { getDayJsInstance, getLocalizedDayJs, getLocalizedDayJsFromMinutes } from '../utils/time';
+
 import type { CalendarSettings } from './calendarSettings';
 import type { CalendarEvent } from './calendarTypes';
 
@@ -19,6 +19,7 @@ export function useContextMenu(params: {
     deleteTimeEntry: (id: string) => Promise<void>;
     onEditEvent: (entry: TimeEntry) => void;
     onCreateEvent: (start: Dayjs, end: Dayjs) => void;
+    onCreateBreak: (start: Dayjs, end: Dayjs) => void;
     emitRefresh: () => void;
 }) {
     const contextMenuTimeEntry = ref<TimeEntry | null>(null);
@@ -34,11 +35,8 @@ export function useContextMenu(params: {
         const snap = params.calendarSettings.value.snapMinutes;
         const snappedMinutes = Math.floor(minutesFromGridStart / snap) * snap;
 
-        const dayjs = getDayJsInstance();
-        const startLocal = dayjs(`${date}T00:00:00`)
-            .tz(getUserTimezone(), true)
-            .add(snappedMinutes, 'minute');
-        const snappedEnd = startLocal.add(snap, 'minute');
+        const startLocal = getLocalizedDayJsFromMinutes(date, snappedMinutes);
+        const snappedEnd = getLocalizedDayJsFromMinutes(date, snappedMinutes + snap);
 
         return { start: startLocal.utc(), end: snappedEnd.utc() };
     }
@@ -76,6 +74,7 @@ export function useContextMenu(params: {
             start: entry.start,
             end: entry.end,
             billable: entry.billable,
+            type: entry.type,
             description: entry.description,
             project_id: entry.project_id,
             task_id: entry.task_id,
@@ -111,6 +110,7 @@ export function useContextMenu(params: {
                 start: midpoint.utc().format(),
                 end: entry.end,
                 billable: entry.billable,
+                type: entry.type,
                 description: entry.description,
                 project_id: entry.project_id,
                 task_id: entry.task_id,
@@ -157,6 +157,47 @@ export function useContextMenu(params: {
         }
     }
 
+    function handleContextCreateBreak() {
+        const dayjs = getDayJsInstance();
+        if (!contextMenuCreateTime.value) {
+            params.onCreateBreak(dayjs().utc().subtract(30, 'minute'), dayjs().utc());
+            return;
+        }
+        const clickTime = contextMenuCreateTime.value.start;
+        // Day matching must use the user's configured timezone (the calendar renders
+        // its day columns in that timezone), not the browser's local timezone
+        const clickDate = getLocalizedDayJs(clickTime.format()).format('YYYY-MM-DD');
+
+        // When the click lands in a gap between two entries of the same day,
+        // the break is prefilled to exactly fill that gap
+        let previousEnd: Dayjs | null = null;
+        let nextStart: Dayjs | null = null;
+        for (const calendarEvent of params.calendarEvents.value) {
+            const entry = calendarEvent.timeEntry;
+            const entryStart = dayjs.utc(entry.start);
+            if (getLocalizedDayJs(entry.start).format('YYYY-MM-DD') !== clickDate) {
+                continue;
+            }
+            const entryEnd = entry.end === null ? null : dayjs.utc(entry.end);
+            if (entryEnd !== null && !entryEnd.isAfter(clickTime)) {
+                if (previousEnd === null || entryEnd.isAfter(previousEnd)) {
+                    previousEnd = entryEnd;
+                }
+            }
+            if (!entryStart.isBefore(clickTime)) {
+                if (nextStart === null || entryStart.isBefore(nextStart)) {
+                    nextStart = entryStart;
+                }
+            }
+        }
+
+        if (previousEnd !== null && nextStart !== null && previousEnd.isBefore(nextStart)) {
+            params.onCreateBreak(previousEnd, nextStart);
+            return;
+        }
+        params.onCreateBreak(contextMenuCreateTime.value.start, contextMenuCreateTime.value.end);
+    }
+
     return {
         contextMenuTimeEntry,
         contextMenuCreateTime,
@@ -168,5 +209,6 @@ export function useContextMenu(params: {
         handleContextStop,
         handleContextDiscard,
         handleContextCreate,
+        handleContextCreateBreak,
     };
 }

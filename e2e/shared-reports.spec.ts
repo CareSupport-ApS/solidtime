@@ -16,6 +16,7 @@ import {
     createTimeEntryWithBillableStatusViaApi,
     createTagViaApi,
     createReportViaApi,
+    updateOrganizationSettingViaApi,
 } from './utils/api';
 import {
     goToReporting,
@@ -66,6 +67,42 @@ test('test that saving a report creates a shared report and its shareable link s
     await expect(page.getByText('Reporting')).toBeVisible();
     await expect(page.getByText(projectName)).toBeVisible();
     await expect(page.getByText('Total')).toBeVisible();
+});
+
+test('test that a shared report grouped by date shows date labels formatted by the organization setting', async ({
+    page,
+    ctx,
+}) => {
+    const reportName = 'DateGroupReport ' + Math.floor(Math.random() * 10000);
+
+    await updateOrganizationSettingViaApi(ctx, { date_format: 'point-separated-d-m-yyyy' });
+    await createTimeEntryViaApi(ctx, {
+        description: 'Entry for date grouping',
+        duration: '1h',
+    });
+
+    await goToReporting(page);
+
+    // Switch the grouping to "Date"
+    const groupBySelects = page.locator('[data-testid="reporting_view"]').getByRole('combobox');
+    await groupBySelects.filter({ hasText: 'Project' }).first().click();
+    await Promise.all([
+        page.waitForResponse(
+            (response) =>
+                response.url().includes('/time-entries/aggregate') &&
+                response.url().includes('group=day') &&
+                response.status() === 200
+        ),
+        page.getByRole('option', { name: 'Date', exact: true }).click(),
+    ]);
+
+    const { shareableLink } = await saveAsSharedReport(page, reportName);
+
+    // Verify row labels are formatted correctly
+    await page.goto(shareableLink);
+    await expect(page.getByText('Total')).toBeVisible();
+    await expect(page.getByText(/^\d{1,2}\.\d{1,2}\.\d{4}$/)).toBeVisible();
+    await expect(page.getByText(/^\d{4}-\d{2}-\d{2}$/)).toHaveCount(0);
 });
 
 test('test that shared report with invalid secret shows no data', async ({ page }) => {
@@ -292,8 +329,8 @@ test('test that shared report respects task filter', async ({ page, ctx }) => {
     await page.goto(shareableLink);
     await expect(page.getByText('Reporting')).toBeVisible();
     await expect(page.getByText('Total')).toBeVisible();
-    await expect(page.getByText('1h 00min').first()).toBeVisible();
-    await expect(page.getByText('3h 00min')).not.toBeVisible();
+    await expect(page.getByText('1:00:00').first()).toBeVisible();
+    await expect(page.getByText('3:00:00')).not.toBeVisible();
 });
 
 test('test that shared report respects client filter', async ({ page, ctx }) => {
@@ -369,8 +406,8 @@ test('test that shared report respects tag filter', async ({ page, ctx }) => {
     await page.goto(shareableLink);
     await expect(page.getByText('Reporting')).toBeVisible();
     await expect(page.getByText('Total')).toBeVisible();
-    await expect(page.getByText('1h 00min').first()).toBeVisible();
-    await expect(page.getByText('3h 00min')).not.toBeVisible();
+    await expect(page.getByText('1:00:00').first()).toBeVisible();
+    await expect(page.getByText('3:00:00')).not.toBeVisible();
 });
 
 test('test that shared report respects member filter', async ({ page, ctx }) => {
@@ -425,7 +462,7 @@ test('test that shared report with billable filter only shows billable entries',
     ]);
 
     // Verify only 1h shows before saving
-    await expect(page.getByTestId('reporting_view').getByText('1h 00min').first()).toBeVisible();
+    await expect(page.getByTestId('reporting_view').getByText('1:00:00').first()).toBeVisible();
 
     const { shareableLink } = await saveAsSharedReport(page, reportName);
 
@@ -435,8 +472,8 @@ test('test that shared report with billable filter only shows billable entries',
     await expect(page.getByText('Total')).toBeVisible();
 
     // Shared report should only show the 1h billable entry, not the 2h non-billable
-    await expect(page.getByText('1h 00min').first()).toBeVisible();
-    await expect(page.getByText('3h 00min')).not.toBeVisible();
+    await expect(page.getByText('1:00:00').first()).toBeVisible();
+    await expect(page.getByText('3:00:00')).not.toBeVisible();
 });
 
 // ──────────────────────────────────────────────────
@@ -469,7 +506,7 @@ test('test that creating a report with an expiration date works', async ({ page,
     await datePicker.click();
 
     // Select a date in the next month
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Next/i }).click();
     await page.getByRole('gridcell').filter({ hasText: /^15$/ }).first().click();
@@ -547,7 +584,7 @@ test('test that editing a report to make it public with expiration date works', 
     await datePicker.click();
 
     // Select a date in the next month
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Next/i }).click();
     await page.getByRole('gridcell').filter({ hasText: /^20$/ }).first().click();
@@ -741,7 +778,7 @@ test('test that updating expiration date on already-public report works', async 
     await datePicker.click();
 
     // Select the 25th of next month
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Next/i }).click();
     await page.getByRole('gridcell').filter({ hasText: /^25$/ }).first().click();

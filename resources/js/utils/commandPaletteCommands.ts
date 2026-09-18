@@ -27,13 +27,7 @@ import BillableIcon from '@/packages/ui/src/Icons/BillableIcon.vue';
 import type { Organization } from '@/types/models';
 
 export type CommandGroup =
-    | 'timer'
-    | 'active-timer'
-    | 'navigation'
-    | 'create'
-    | 'theme'
-    | 'organization'
-    | 'entity';
+    'timer' | 'active-timer' | 'navigation' | 'create' | 'theme' | 'organization' | 'entity';
 
 export interface Command {
     id: string;
@@ -210,7 +204,7 @@ export function createNavigationCommands(
             icon: Cog6ToothIcon,
             keywords: ['settings', 'organization', 'configuration'],
             group: 'navigation',
-            action: () => navigate('teams.show', { team: currentTeamId() }),
+            action: () => navigate('organizations.show', { organizationId: currentTeamId() }),
             permission: permissions.canUpdateOrganization,
             priority: GROUP_PRIORITIES.navigation - 3,
         },

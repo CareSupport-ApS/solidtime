@@ -12,8 +12,10 @@ import {
 } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import { useCssVariable } from '../utils/useCssVariable';
-import { getLocalizedDayJs } from '../utils/time';
+import { useBreaksEnabled } from '../utils/useBreaksEnabled';
+import { getLocalizedDayJs, getLocalizedDayJsFromMinutes } from '../utils/time';
 import { LoadingSpinner, TimeEntryCreateModal, TimeEntryEditModal } from '..';
+import BreakCreateModal from '../TimeEntry/BreakCreateModal.vue';
 import FullCalendarDayHeader from './FullCalendarDayHeader.vue';
 import CalendarToolbar from './CalendarToolbar.vue';
 import CalendarDayColumn from './CalendarDayColumn.vue';
@@ -34,6 +36,7 @@ import {
     StopIcon,
     XMarkIcon,
 } from '@heroicons/vue/20/solid';
+import { Coffee } from '@lucide/vue';
 import type { ActivityPeriod } from './activityTypes';
 import { SLOT_HEIGHT, TIME_AXIS_WIDTH, type DayEvent } from './calendarTypes';
 import { useCalendarGrid } from './useCalendarGrid';
@@ -57,7 +60,7 @@ import type {
 import type { Dayjs } from 'dayjs';
 
 const emit = defineEmits<{
-    (e: 'dates-change', payload: { start: Date; end: Date }): void;
+    (e: 'dates-change', payload: { start: Dayjs; end: Dayjs }): void;
     (e: 'refresh'): void;
 }>();
 
@@ -74,6 +77,8 @@ const props = defineProps<{
     currency: string;
     canCreateProject: boolean;
     organizationBillableRate: number | null;
+    // Local date (YYYY-MM-DD) to open the calendar on, e.g. from a "Fix in calendar" deep link
+    initialDate?: string | null;
 
     createTimeEntry: (
         entry: Omit<TimeEntry, 'id' | 'organization_id' | 'user_id'>
@@ -87,6 +92,9 @@ const props = defineProps<{
 
 const newEventStart = ref<Dayjs | null>(null);
 const newEventEnd = ref<Dayjs | null>(null);
+const showCreateBreakModal = ref(false);
+const newBreakStart = ref<Dayjs | null>(null);
+const newBreakEnd = ref<Dayjs | null>(null);
 const showCreateTimeEntryModal = ref<boolean>(false);
 const showEditTimeEntryModal = ref<boolean>(false);
 const selectedTimeEntry = ref<TimeEntry | null>(null);
@@ -114,6 +122,7 @@ const currentTime = ref(getLocalizedDayJs());
 let currentTimeInterval: ReturnType<typeof setInterval> | null = null;
 
 const organization = inject<ComputedRef<Organization>>('organization');
+const breaksEnabled = useBreaksEnabled();
 
 const {
     slots,
@@ -138,23 +147,34 @@ const {
 } = useCalendarNavigation({
     onDatesChange: (payload) => emit('dates-change', payload),
     scrollToCurrentTime: () => scrollToCurrentTime(),
+    // Parse as local midnight in the user's timezone — getLocalizedDayJs would
+    // treat the bare date as UTC midnight, landing on the previous local day
+    // for negative UTC offsets
+    initialDate: props.initialDate ? getLocalizedDayJsFromMinutes(props.initialDate, 0) : null,
 });
 
 const cssBackground = useCssVariable('--color-bg-background');
 
-const { optimisticOverrides, calendarEvents, eventsByDay, dailyTotals, isToday, nowIndicatorTop } =
-    useCalendarEvents({
-        timeEntries: () => props.timeEntries,
-        projects: () => props.projects,
-        clients: () => props.clients,
-        tasks: () => props.tasks,
-        calendarSettings,
-        viewDays,
-        currentTime,
-        cssBackground,
-        minutesToPixels,
-        timeToMinutesFromMidnight,
-    });
+const {
+    optimisticOverrides,
+    calendarEvents,
+    eventsByDay,
+    dailyTotals,
+    dailyBreakTotals,
+    isToday,
+    nowIndicatorTop,
+} = useCalendarEvents({
+    timeEntries: () => props.timeEntries,
+    projects: () => props.projects,
+    clients: () => props.clients,
+    tasks: () => props.tasks,
+    calendarSettings,
+    viewDays,
+    currentTime,
+    cssBackground,
+    minutesToPixels,
+    timeToMinutesFromMidnight,
+});
 
 const {
     activityBoxesForDay,
@@ -163,6 +183,7 @@ const {
     getActivityBoxActivities,
     getActivityPercentage,
     getActivityText,
+    getTopActivity,
 } = useActivityBoxes({
     activityPeriods: () => props.activityPeriods,
     viewDays,
@@ -243,6 +264,7 @@ const {
     handleContextStop,
     handleContextDiscard,
     handleContextCreate,
+    handleContextCreateBreak,
 } = useContextMenu({
     calendarSettings,
     calendarEvents,
@@ -261,6 +283,11 @@ const {
         newEventEnd.value = end;
         showCreateTimeEntryModal.value = true;
     },
+    onCreateBreak: (start, end) => {
+        newBreakStart.value = start;
+        newBreakEnd.value = end;
+        showCreateBreakModal.value = true;
+    },
     emitRefresh: () => emit('refresh'),
 });
 
@@ -273,12 +300,36 @@ watch(showCreateTimeEntryModal, (value) => {
     }
 });
 
+watch(showCreateBreakModal, (value) => {
+    if (!value) {
+        newBreakStart.value = null;
+        newBreakEnd.value = null;
+        emit('refresh');
+    }
+});
+
 watch(showEditTimeEntryModal, (value) => {
     if (!value) {
         selectedTimeEntry.value = null;
         emit('refresh');
     }
 });
+
+/**
+ * Guards slot pointer-down so that clicks which dismiss an open Reka UI
+ * layer (context menu, popover, dialog) don't simultaneously start a
+ * new time-entry selection on the calendar grid.
+ *
+ * Because Reka's DismissableLayer registers its document-level
+ * `pointerdown` listener *without* capture, it fires AFTER the
+ * calendar grid's own handler. That means when this guard runs,
+ * `contextMenuOpen` (and modal refs) still reflect the *open* state.
+ */
+function guardedSlotPointerDown(e: PointerEvent) {
+    if (contextMenuOpen.value) return;
+    if (showCreateTimeEntryModal.value || showEditTimeEntryModal.value) return;
+    onSlotPointerDown(e);
+}
 
 const scrollToCurrentTime = () => {
     nextTick(() => {
@@ -312,6 +363,18 @@ watch(
         emitDatesChange();
     },
     { deep: true }
+);
+
+let hasScrolledOnLoad = false;
+
+watch(
+    () => props.loading,
+    (loading) => {
+        if (!loading && !hasScrolledOnLoad) {
+            hasScrolledOnLoad = true;
+            scrollToCurrentTime();
+        }
+    }
 );
 
 onMounted(() => {
@@ -426,6 +489,12 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
             :start="newEventStart ? newEventStart.toISOString() : undefined"
             :end="newEventEnd ? newEventEnd.toISOString() : undefined" />
 
+        <BreakCreateModal
+            v-model:show="showCreateBreakModal"
+            :create-time-entry="createTimeEntry"
+            :start="newBreakStart ? newBreakStart.toISOString() : undefined"
+            :end="newBreakEnd ? newBreakEnd.toISOString() : undefined" />
+
         <TimeEntryEditModal
             v-model:show="showEditTimeEntryModal"
             :time-entry="selectedTimeEntry as any"
@@ -465,7 +534,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                         <div
                             class="fc-header-scroll flex border-b border-border shrink-0 sticky top-0 z-10 bg-default-background">
                             <div
-                                class="shrink-0 bg-background border-r border-border"
+                                class="shrink-0 bg-default-background border-r border-border"
                                 :style="{
                                     width: TIME_AXIS_WIDTH + 'px',
                                     minWidth: TIME_AXIS_WIDTH + 'px',
@@ -478,7 +547,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                 <div
                                     v-for="day in viewDays"
                                     :key="day.format('YYYY-MM-DD')"
-                                    class="fc-col-header-cell border-r border-b border-border px-2 py-3 bg-default-background text-center"
+                                    class="fc-col-header-cell border-r border-border px-2 py-3 bg-default-background text-center"
                                     :class="{
                                         'bg-secondary': isToday(day),
                                         'fc-day-today': isToday(day),
@@ -487,8 +556,9 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                     <FullCalendarDayHeader
                                         :date="day"
                                         :is-today="isToday(day)"
-                                        :total-seconds="
-                                            dailyTotals[day.format('YYYY-MM-DD')] || 0
+                                        :total-seconds="dailyTotals[day.format('YYYY-MM-DD')] || 0"
+                                        :break-seconds="
+                                            dailyBreakTotals[day.format('YYYY-MM-DD')] || 0
                                         " />
                                 </div>
                             </div>
@@ -497,7 +567,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                         <div ref="scrollerRef" class="fc-scroller">
                             <div class="flex min-w-0">
                                 <div
-                                    class="shrink-0 bg-background border-r border-border"
+                                    class="shrink-0 bg-default-background border-r border-border"
                                     :style="{
                                         width: TIME_AXIS_WIDTH + 'px',
                                         minWidth: TIME_AXIS_WIDTH + 'px',
@@ -514,7 +584,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                         :style="{ height: SLOT_HEIGHT + 'px' }">
                                         <span
                                             v-if="slot.isHour"
-                                            class="fc-timegrid-slot-label-cushion text-[0.8125rem] text-muted-foreground leading-none block">
+                                            class="fc-timegrid-slot-label-cushion text-[0.8125rem] text-muted-foreground leading-none block font-light">
                                             {{ formatSlotLabel(slot.minutes / 60) }}
                                         </span>
                                     </div>
@@ -522,14 +592,32 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
 
                                 <div
                                     class="flex-1 min-w-0 relative"
-                                    @pointerdown="onSlotPointerDown($event)">
+                                    @pointerdown="guardedSlotPointerDown($event)">
                                     <div
-                                        class="bg-background"
+                                        class="bg-default-background relative"
                                         :style="{ height: totalGridHeight + 'px' }">
+                                        <div
+                                            class="absolute inset-0 grid"
+                                            :style="{
+                                                gridTemplateColumns:
+                                                    'repeat(' + viewDays.length + ', 1fr)',
+                                            }">
+                                            <div
+                                                v-for="day in viewDays"
+                                                :key="'bg-' + day.format('YYYY-MM-DD')"
+                                                :style="
+                                                    isToday(day)
+                                                        ? {
+                                                              backgroundColor:
+                                                                  'var(--theme-color-default-background)',
+                                                          }
+                                                        : undefined
+                                                " />
+                                        </div>
                                         <div
                                             v-for="slot in slots"
                                             :key="'lane-' + slot.time"
-                                            class="fc-timegrid-slot fc-timegrid-slot-lane border-t border-border box-border"
+                                            class="fc-timegrid-slot fc-timegrid-slot-lane border-t border-border box-border relative"
                                             :class="{
                                                 'fc-timegrid-slot-minor border-dotted':
                                                     !slot.isHour,
@@ -581,6 +669,8 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                             :get-activity-box-activities="getActivityBoxActivities"
                                             :get-activity-percentage="getActivityPercentage"
                                             :get-activity-text="getActivityText"
+                                            :get-top-activity="getTopActivity"
+                                            :is-day-view="activeView === 'timeGridDay'"
                                             :show-selection="
                                                 isSelecting || showCreateTimeEntryModal
                                             "
@@ -599,6 +689,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                             :selection-height="selectionHeight"
                                             :selection-end-top="selectionEndTop"
                                             :selection-end-height="selectionEndHeight"
+                                            @activity-pointerdown="guardedSlotPointerDown"
                                             @event-pointerdown="
                                                 (e, dayEvent) =>
                                                     onEventPointerDown(e, dayEvent.event, dayEvent)
@@ -632,11 +723,19 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                             <PencilIcon class="w-4 h-4 text-icon-default" />
                             <span>Edit</span>
                         </ContextMenuItem>
-                        <ContextMenuItem class="space-x-3" @select="handleContextDuplicate()">
+                        <!-- Duplicate/Split create a new entry of the same type, which the
+                             server rejects for breaks when breaks are disabled -->
+                        <ContextMenuItem
+                            v-if="contextMenuTimeEntry.type !== 'break' || breaksEnabled"
+                            class="space-x-3"
+                            @select="handleContextDuplicate()">
                             <DocumentDuplicateIcon class="w-4 h-4 text-icon-default" />
                             <span>Duplicate</span>
                         </ContextMenuItem>
-                        <ContextMenuItem class="space-x-3" @select="handleContextSplit()">
+                        <ContextMenuItem
+                            v-if="contextMenuTimeEntry.type !== 'break' || breaksEnabled"
+                            class="space-x-3"
+                            @select="handleContextSplit()">
                             <ScissorsIcon class="w-4 h-4 text-icon-default" />
                             <span>Split</span>
                         </ContextMenuItem>
@@ -665,6 +764,13 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                         <ContextMenuItem class="space-x-3" @select="handleContextCreate()">
                             <PlusIcon class="w-4 h-4 text-icon-default" />
                             <span>Create Time Entry</span>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            v-if="breaksEnabled"
+                            class="space-x-3"
+                            @select="handleContextCreateBreak()">
+                            <Coffee class="w-4 h-4 text-icon-default" />
+                            <span>Add Break</span>
                         </ContextMenuItem>
                     </template>
                 </ContextMenuContent>

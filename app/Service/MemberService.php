@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Enums\Role;
+use App\Events\MemberAdded;
+use App\Events\MemberAdding;
 use App\Events\MemberRemoved;
 use App\Exceptions\Api\CanNotRemoveOwnerFromOrganization;
 use App\Exceptions\Api\ChangingRoleOfPlaceholderIsNotAllowed;
@@ -21,8 +23,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
-use Laravel\Jetstream\Events\AddingTeamMember;
-use Laravel\Jetstream\Events\TeamMemberAdded;
 
 class MemberService
 {
@@ -36,7 +36,7 @@ class MemberService
     public function addMember(User $user, Organization $organization, Role $role, bool $asSuperAdmin = false): Member
     {
         if (! $asSuperAdmin) {
-            AddingTeamMember::dispatch($organization, $user);
+            MemberAdding::dispatch($user, $organization, $role);
         }
 
         $member = new Member;
@@ -49,12 +49,34 @@ class MemberService
             $user->currentOrganization()->associate($organization);
             $user->save();
         });
+        $this->mergePlaceholderMembersIntoExistingMember($member, $organization, $user);
 
         if (! $asSuperAdmin) {
-            TeamMemberAdded::dispatch($organization, $user);
+            MemberAdded::dispatch($member, $organization, $user);
         }
 
         return $member;
+    }
+
+    private function mergePlaceholderMembersIntoExistingMember(Member $member, Organization $organization, User $user): void
+    {
+        $placeholders = Member::query()
+            ->whereHas('user', function (Builder $query) use ($user): void {
+                /** @var Builder<User> $query */
+                $query->where('is_placeholder', '=', true)
+                    ->where('email', '=', $user->email);
+            })
+            ->whereBelongsTo($organization, 'organization')
+            ->with(['user'])
+            ->get();
+
+        foreach ($placeholders as $placeholder) {
+            /** @var Member $placeholder */
+            $placeholderUser = $placeholder->user;
+            $this->assignOrganizationEntitiesToDifferentMember($organization, $placeholder, $member);
+            $placeholder->delete();
+            $placeholderUser->delete();
+        }
     }
 
     /**
@@ -71,7 +93,7 @@ class MemberService
         $isPlaceholder = $user->is_placeholder;
 
         if (! $isPlaceholder && $user->current_team_id === $member->organization_id) {
-            $user->currentTeam()->disassociate();
+            $user->currentOrganization()->disassociate();
             $user->save();
         }
 
@@ -190,13 +212,22 @@ class MemberService
     {
         $user = $member->user;
         if ($user->current_team_id === $member->organization_id) {
-            $user->currentTeam()->disassociate();
+            $user->currentOrganization()->disassociate();
             $user->save();
         }
 
         $placeholderUser = $user->replicate();
         $placeholderUser->is_placeholder = true;
-        $placeholderUser->current_team_id = $member->organization_id;
+        // Reset authentication relevant properties on the placeholder user
+        $placeholderUser->password = null;
+        $placeholderUser->remember_token = null;
+        $placeholderUser->two_factor_secret = null;
+        $placeholderUser->two_factor_recovery_codes = null;
+        $placeholderUser->two_factor_confirmed_at = null;
+        $placeholderUser->email_verified_at = null;
+        $placeholderUser->pending_email = null;
+        $placeholderUser->current_team_id = null;
+        $placeholderUser->profile_photo_path = null;
         $placeholderUser->save();
 
         $member->user()->associate($placeholderUser);
@@ -208,5 +239,14 @@ class MemberService
             $this->userService->makeSureUserHasAtLeastOneOrganization($user);
             $this->userService->makeSureUserHasCurrentOrganization($user);
         }
+    }
+
+    public function isEmailAlreadyMember(Organization $organization, string $email): bool
+    {
+        return Member::query()
+            ->whereBelongsTo($organization, 'organization')
+            ->whereRelation('user', 'email', '=', $email)
+            ->where('role', '!=', Role::Placeholder->value)
+            ->exists();
     }
 }

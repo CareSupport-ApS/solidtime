@@ -15,6 +15,7 @@ use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -23,10 +24,6 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
-use Laravel\Jetstream\Events\TeamCreated;
-use Laravel\Jetstream\Events\TeamDeleted;
-use Laravel\Jetstream\Events\TeamUpdated;
-use Laravel\Jetstream\Team as JetstreamTeam;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 
 /**
@@ -38,12 +35,14 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  * @property string $user_id
  * @property bool $employees_can_see_billable_rates
  * @property bool $employees_can_manage_tasks
+ * @property bool $prevent_overlapping_time_entries
+ * @property bool $breaks_enabled
  * @property User $owner
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Collection<int, User> $users
  * @property Collection<int, User> $realUsers
- * @property-read Collection<int, OrganizationInvitation> $teamInvitations
+ * @property-read Collection<int, OrganizationInvitation> $organizationInvitations
  * @property Member $membership
  * @property NumberFormat $number_format
  * @property CurrencyFormat $currency_format
@@ -51,10 +50,9 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
  * @property IntervalFormat $interval_format
  * @property TimeFormat $time_format
  *
- * @method HasMany<OrganizationInvitation, $this> teamInvitations()
  * @method static OrganizationFactory factory()
  */
-class Organization extends JetstreamTeam implements AuditableContract
+class Organization extends Model implements AuditableContract
 {
     use CustomAuditable;
 
@@ -75,6 +73,7 @@ class Organization extends JetstreamTeam implements AuditableContract
         'employees_can_see_billable_rates' => 'boolean',
         'employees_can_manage_tasks' => 'boolean',
         'prevent_overlapping_time_entries' => 'boolean',
+        'breaks_enabled' => 'boolean',
         'prevent_time_entries_without_project' => 'boolean',
         'prevent_time_entries_on_project_with_incomplete_tasks' => 'boolean',
         'number_format' => NumberFormat::class,
@@ -95,40 +94,12 @@ class Organization extends JetstreamTeam implements AuditableContract
     ];
 
     /**
-     * The event map for the model.
-     *
-     * @var array<string, class-string>
-     */
-    protected $dispatchesEvents = [
-        'created' => TeamCreated::class,
-        'updated' => TeamUpdated::class,
-        'deleted' => TeamDeleted::class,
-    ];
-
-    /**
      * The model's default values for attributes.
      *
      * @var array<string, mixed>
      */
     protected $attributes = [
     ];
-
-    /**
-     * Get all the non-placeholder users of the organization including its owner.
-     *
-     * @return Collection<int, User>
-     */
-    public function allRealUsers(): Collection
-    {
-        return $this->realUsers->merge([$this->owner]);
-    }
-
-    public function hasRealUserWithEmail(string $email): bool
-    {
-        return $this->allRealUsers()->contains(function (User $user) use ($email): bool {
-            return $user->email === $email;
-        });
-    }
 
     /**
      * Get all the users that belong to the team.
@@ -175,12 +146,21 @@ class Organization extends JetstreamTeam implements AuditableContract
     }
 
     /**
-     * This method prevents an unhandled exception when the ID is not a UUID.
-     * Normally this can be fixed with a route pattern, but Jetstream does not use route model binding.
-     *
-     * @param  array<string>  $columns
+     * @return HasMany<OrganizationInvitation, $this>
      */
-    public function findOrFail(string $id, array $columns = ['*']): \Laravel\Jetstream\Team
+    public function organizationInvitations(): HasMany
+    {
+        return $this->hasMany(OrganizationInvitation::class, 'organization_id');
+    }
+
+    /**
+     * Find a model by its primary key or throw an exception.
+     *
+     * @param  array<int, string>  $columns
+     *
+     * @throws ModelNotFoundException<Model>
+     */
+    public static function findOrFail(string $id, array $columns = ['*']): Model
     {
         if (! Str::isUuid($id)) {
             throw (new ModelNotFoundException)->setModel(

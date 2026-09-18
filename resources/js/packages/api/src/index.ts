@@ -16,6 +16,7 @@ export type Invitation = InvitationsIndexResponse['data'][0];
 
 export type TimeEntryResponse = ZodiosResponseByAlias<SolidTimeApi, 'getTimeEntries'>;
 export type TimeEntry = TimeEntryResponse['data'][0];
+export type TimeEntryType = TimeEntry['type'];
 
 export type CreateTimeEntryBody = ZodiosBodyByAlias<SolidTimeApi, 'createTimeEntry'>;
 
@@ -114,13 +115,25 @@ export type ApiToken = ApiTokenIndexResponse['data'][0];
 
 export type DetailedInvoiceResponse = ZodiosResponseByAlias<SolidTimeApi, 'getInvoice'>;
 
+export type DetailedInvoice = DetailedInvoiceResponse['data'];
+
 export type InvoiceIndexEntry = ZodiosResponseByAlias<SolidTimeApi, 'getInvoices'>['data'][0];
+export type InvoiceRecipient = ZodiosResponseByAlias<
+    SolidTimeApi,
+    'getInvoiceRecipients'
+>['data'][0];
+export type InvoiceRecipientBody = ZodiosBodyByAlias<SolidTimeApi, 'createInvoiceRecipient'>;
 
 export type UpdateInvoiceSettings = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoiceSettings'>;
 
 export type CreateInvoiceBody = ZodiosBodyByAlias<SolidTimeApi, 'createInvoice'>;
 
 export type UpdateInvoiceBody = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoice'>;
+
+export type User = ZodiosResponseByAlias<SolidTimeApi, 'getMe'>['data'];
+export type UpdateUserBody = ZodiosBodyByAlias<SolidTimeApi, 'updateUser'>;
+export type DeleteUserBody = ZodiosBodyByAlias<SolidTimeApi, 'deleteUser'>;
+export type DeleteOrganizationBody = ZodiosBodyByAlias<SolidTimeApi, 'deleteOrganization'>;
 
 const api = createApiClient('/api', { validate: 'none' });
 

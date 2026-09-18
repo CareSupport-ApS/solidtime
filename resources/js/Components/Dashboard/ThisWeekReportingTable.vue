@@ -2,7 +2,7 @@
 import ReportingRow from '@/Components/Common/Reporting/ReportingRow.vue';
 import ReportingGroupBySelect from '@/Components/Common/Reporting/ReportingGroupBySelect.vue';
 import {
-    formatHumanReadableDuration,
+    formatReportingDuration,
     getDayJsInstance,
     getLocalizedDayJs,
 } from '@/packages/ui/src/utils/time';
@@ -62,6 +62,8 @@ const queryParams = computed<AggregatedTimeEntriesQueryParams>(() => {
         group: group.value,
         sub_group: subGroup.value,
         member_id: getCurrentRole() === 'employee' ? getCurrentMembershipId() : undefined,
+        // Breaks are excluded from all dashboard stats (see DashboardService workTime())
+        type: 'work',
     };
 });
 
@@ -93,20 +95,24 @@ const tableData = computed(() => {
     return (
         aggregatedTableTimeEntries.value?.grouped_data?.map((entry) => {
             return {
+                key: entry.key,
                 seconds: entry.seconds,
                 cost: entry.cost,
                 description: getNameForReportingRowEntry(
                     entry.key,
-                    aggregatedTableTimeEntries.value?.grouped_type ?? null
+                    aggregatedTableTimeEntries.value?.grouped_type ?? null,
+                    organization?.value?.date_format
                 ),
                 grouped_data:
                     entry.grouped_data?.map((el) => {
                         return {
+                            key: el.key,
                             seconds: el.seconds,
                             cost: el.cost,
                             description: getNameForReportingRowEntry(
                                 el.key,
-                                entry.grouped_type ?? null
+                                entry.grouped_type ?? null,
+                                organization?.value?.date_format
                             ),
                         };
                     }) ?? [],
@@ -162,7 +168,7 @@ const showBillableRate = computed(() => {
                 ">
                 <ReportingRow
                     v-for="entry in tableData"
-                    :key="entry.description ?? 'none'"
+                    :key="entry.key ?? 'none'"
                     :currency="getOrganizationCurrencyString()"
                     :show-cost="showBillableRate"
                     :entry="entry"></ReportingRow>
@@ -174,7 +180,7 @@ const showBillableRate = computed(() => {
                         class="justify-end flex items-center font-medium"
                         :class="!showBillableRate ? 'pr-6' : ''">
                         {{
-                            formatHumanReadableDuration(
+                            formatReportingDuration(
                                 aggregatedTableTimeEntries.seconds,
                                 organization?.interval_format,
                                 organization?.number_format

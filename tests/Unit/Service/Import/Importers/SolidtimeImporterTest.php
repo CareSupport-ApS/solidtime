@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Service\Import\Importers;
 
+use App\Enums\TimeEntryType;
 use App\Jobs\RecalculateSpentTimeForProject;
 use App\Jobs\RecalculateSpentTimeForTask;
 use App\Models\Organization;
+use App\Models\TimeEntry;
 use App\Service\Import\Importers\DefaultImporter;
 use App\Service\Import\Importers\ImportException;
 use App\Service\Import\Importers\SolidtimeImporter;
@@ -34,6 +36,31 @@ class SolidtimeImporterTest extends ImporterTestAbstract
         } catch (Exception $e) {
             $this->assertInstanceOf(ImportException::class, $e);
             $this->assertSame('Invalid ZIP, error code: 19', $e->getMessage());
+
+            return;
+        }
+        $this->fail();
+    }
+
+    public function test_import_throws_exception_if_zip_exceeds_uncompressed_size_limit(): void
+    {
+        // Arrange
+        config(['import.zip_max_uncompressed_size' => 10]);
+        $zipPath = $this->createTestZip('solidtime_import_test_1');
+        $timezone = 'Europe/Vienna';
+        $organization = Organization::factory()->create();
+        $importer = new SolidtimeImporter;
+        $importer->init($organization);
+        $data = file_get_contents($zipPath);
+
+        // Act
+        try {
+            $importer->importData($data, $timezone);
+        } catch (Exception $e) {
+            // Assert
+            $this->assertInstanceOf(ImportException::class, $e);
+            $this->assertSame('ZIP uncompressed size exceeds the maximum of 10 bytes', $e->getMessage());
+            $this->assertSame(0, $importer->getReport()->timeEntriesCreated);
 
             return;
         }
@@ -73,6 +100,44 @@ class SolidtimeImporterTest extends ImporterTestAbstract
         $this->assertSame(2, $report->clientsCreated);
         Queue::assertPushed(RecalculateSpentTimeForProject::class, 1);
         Queue::assertPushed(RecalculateSpentTimeForTask::class, 1);
+    }
+
+    public function test_import_of_test_file_with_type_column_imports_breaks(): void
+    {
+        // Arrange
+        $zipPath = $this->createTestZip('solidtime_import_test_2');
+        $timezone = 'Europe/Vienna';
+        $organization = Organization::factory()->create();
+        $importer = new SolidtimeImporter;
+        $importer->init($organization);
+        $data = file_get_contents($zipPath);
+        Queue::fake([
+            RecalculateSpentTimeForProject::class,
+            RecalculateSpentTimeForTask::class,
+        ]);
+
+        // Act
+        $importer->importData($data, $timezone);
+        $report = $importer->getReport();
+
+        // Assert
+        $this->assertSame(3, $report->timeEntriesCreated);
+        $timeEntries = TimeEntry::all();
+        $this->assertCount(3, $timeEntries);
+        // Empty type value falls back to the default type (work)
+        $timeEntryWithoutType = $timeEntries->firstWhere('description', '');
+        $this->assertNotNull($timeEntryWithoutType);
+        $this->assertSame(TimeEntryType::Work, $timeEntryWithoutType->type);
+        $workEntry = $timeEntries->firstWhere('description', 'Working hard');
+        $this->assertNotNull($workEntry);
+        $this->assertSame(TimeEntryType::Work, $workEntry->type);
+        $breakEntry = $timeEntries->firstWhere('description', 'Lunch break');
+        $this->assertNotNull($breakEntry);
+        $this->assertSame(TimeEntryType::Break, $breakEntry->type);
+        $this->assertFalse($breakEntry->billable);
+        $this->assertNull($breakEntry->project_id);
+        $this->assertNull($breakEntry->task_id);
+        $this->assertSame([], $breakEntry->tags);
     }
 
     public function test_import_of_test_file_twice_succeeds(): void

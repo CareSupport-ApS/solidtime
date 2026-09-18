@@ -11,6 +11,8 @@ use App\Enums\NumberFormat;
 use App\Enums\TimeFormat;
 use App\Http\Requests\V1\BaseFormRequest;
 use App\Models\Organization;
+use App\Rules\CurrencyRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
 /**
@@ -21,7 +23,7 @@ class OrganizationUpdateRequest extends BaseFormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<string|\Illuminate\Contracts\Validation\Rule>>
+     * @return array<string, array<string|\Illuminate\Contracts\Validation\Rule|ValidationRule>>
      */
     public function rules(): array
     {
@@ -29,6 +31,10 @@ class OrganizationUpdateRequest extends BaseFormRequest
             'name' => [
                 'string',
                 'max:255',
+            ],
+            'currency' => [
+                'string',
+                new CurrencyRule,
             ],
             'billable_rate' => array_merge(
                 [
@@ -49,6 +55,9 @@ class OrganizationUpdateRequest extends BaseFormRequest
                 'boolean',
             ],
             'prevent_time_entries_on_project_with_incomplete_tasks' => [
+                'boolean',
+            ],
+            'breaks_enabled' => [
                 'boolean',
             ],
             'number_format' => [
@@ -72,6 +81,11 @@ class OrganizationUpdateRequest extends BaseFormRequest
     public function getName(): ?string
     {
         return $this->has('name') ? (string) $this->input('name') : null;
+    }
+
+    public function getCurrency(): ?string
+    {
+        return $this->has('currency') ? (string) $this->input('currency') : null;
     }
 
     public function getNumberFormat(): ?NumberFormat
@@ -119,6 +133,11 @@ class OrganizationUpdateRequest extends BaseFormRequest
     public function getPreventOverlappingTimeEntries(): ?bool
     {
         return $this->has('prevent_overlapping_time_entries') ? $this->boolean('prevent_overlapping_time_entries') : null;
+    }
+
+    public function getBreaksEnabled(): ?bool
+    {
+        return $this->has('breaks_enabled') ? $this->boolean('breaks_enabled') : null;
     }
 
     public function getPreventTimeEntriesWithoutProject(): ?bool

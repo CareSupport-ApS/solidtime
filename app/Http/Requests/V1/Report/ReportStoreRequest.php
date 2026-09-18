@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\V1\Report;
 
+use App\Enums\TagMatchType;
 use App\Enums\TimeEntryAggregationType;
 use App\Enums\TimeEntryAggregationTypeInterval;
 use App\Enums\TimeEntryRoundingType;
+use App\Enums\TimeEntryType;
 use App\Enums\Weekday;
 use App\Http\Requests\V1\BaseFormRequest;
 use App\Models\Organization;
@@ -124,6 +126,11 @@ class ReportStoreRequest extends BaseFormRequest
                     }
                 },
             ],
+            'properties.tag_match_type' => [
+                'nullable',
+                'string',
+                Rule::enum(TagMatchType::class),
+            ],
             'properties.task_ids' => [
                 'nullable',
                 'array',
@@ -170,6 +177,12 @@ class ReportStoreRequest extends BaseFormRequest
                 'nullable',
                 'numeric',
                 'integer',
+            ],
+            // Filter by time entry type
+            'properties.time_entry_type' => [
+                'nullable',
+                'string',
+                Rule::enum(TimeEntryType::class),
             ],
         ];
     }
@@ -234,6 +247,15 @@ class ReportStoreRequest extends BaseFormRequest
         return null;
     }
 
+    public function getPropertyTimeEntryType(): ?TimeEntryType
+    {
+        if (! $this->has('properties.time_entry_type') || $this->input('properties.time_entry_type') === null) {
+            return null;
+        }
+
+        return TimeEntryType::from($this->input('properties.time_entry_type'));
+    }
+
     public function getPropertyGroup(): TimeEntryAggregationType
     {
         return TimeEntryAggregationType::from($this->input('properties.group'));
@@ -247,6 +269,15 @@ class ReportStoreRequest extends BaseFormRequest
     public function getPropertyHistoryGroup(): TimeEntryAggregationTypeInterval
     {
         return TimeEntryAggregationTypeInterval::from($this->input('properties.history_group'));
+    }
+
+    public function getPropertyTagMatchType(): ?TagMatchType
+    {
+        if (! $this->has('properties.tag_match_type') || $this->input('properties.tag_match_type') === null) {
+            return null;
+        }
+
+        return TagMatchType::from($this->input('properties.tag_match_type'));
     }
 
     public function getPropertyRoundingType(): ?TimeEntryRoundingType

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service\Dto;
 
+use App\Enums\TagMatchType;
 use App\Enums\TimeEntryAggregationType;
 use App\Enums\TimeEntryAggregationTypeInterval;
 use App\Enums\TimeEntryRoundingType;
+use App\Enums\TimeEntryType;
 use App\Enums\Weekday;
 use App\Service\TimeEntryFilter;
 use Illuminate\Contracts\Database\Eloquent\Castable;
@@ -56,6 +58,8 @@ class ReportPropertiesDto implements Castable
      */
     public ?Collection $tagIds = null;
 
+    public ?TagMatchType $tagMatchType = null;
+
     /**
      * @var Collection<int, string>|null
      */
@@ -64,6 +68,8 @@ class ReportPropertiesDto implements Castable
     public ?TimeEntryRoundingType $roundingType = null;
 
     public ?int $roundingMinutes = null;
+
+    public ?TimeEntryType $timeEntryType = null;
 
     /**
      * Get the caster class to use when casting from / to this cast target.
@@ -115,6 +121,7 @@ class ReportPropertiesDto implements Castable
                 $dto->clientIds = $data->clientIds !== null ? ReportPropertiesDto::idArrayToCollection($data->clientIds) : null;
                 $dto->projectIds = $data->projectIds !== null ? ReportPropertiesDto::idArrayToCollection($data->projectIds) : null;
                 $dto->tagIds = $data->tagIds !== null ? ReportPropertiesDto::idArrayToCollection($data->tagIds) : null;
+                $dto->tagMatchType = isset($data->tagMatchType) ? TagMatchType::from($data->tagMatchType) : null;
                 $dto->taskIds = $data->taskIds ? ReportPropertiesDto::idArrayToCollection($data->taskIds) : null;
                 $dto->group = TimeEntryAggregationType::from($data->group);
                 $dto->subGroup = TimeEntryAggregationType::from($data->subGroup);
@@ -125,6 +132,12 @@ class ReportPropertiesDto implements Castable
                 $dto->roundingType = isset($data->roundingType) ? TimeEntryRoundingType::from($data->roundingType) : null;
                 // Note: roundingMinutes was added later so it is possible that the value is missing in persisted reports in the DB
                 $dto->roundingMinutes = isset($data->roundingMinutes) ? (int) $data->roundingMinutes : null;
+                // Note: timeEntryType was added later, reports persisted before that are missing the value and default to "work"
+                if (property_exists($data, 'timeEntryType')) {
+                    $dto->timeEntryType = $data->timeEntryType !== null ? TimeEntryType::from($data->timeEntryType) : null;
+                } else {
+                    $dto->timeEntryType = TimeEntryType::Work;
+                }
 
                 return $dto;
             }
@@ -144,6 +157,7 @@ class ReportPropertiesDto implements Castable
                     'clientIds' => $value->clientIds?->toArray(),
                     'projectIds' => $value->projectIds?->toArray(),
                     'tagIds' => $value->tagIds?->toArray(),
+                    'tagMatchType' => $value->tagMatchType?->value,
                     'taskIds' => $value->taskIds?->toArray(),
                     'group' => $value->group->value,
                     'subGroup' => $value->subGroup->value,
@@ -152,6 +166,7 @@ class ReportPropertiesDto implements Castable
                     'timezone' => $value->timezone,
                     'roundingType' => $value->roundingType?->value,
                     'roundingMinutes' => $value->roundingMinutes,
+                    'timeEntryType' => $value->timeEntryType?->value,
                 ];
 
                 $jsonString = json_encode($data);
@@ -214,6 +229,11 @@ class ReportPropertiesDto implements Castable
     public function setTagIds(?array $tagIds): void
     {
         $this->tagIds = $tagIds !== null ? ReportPropertiesDto::idArrayToCollection($tagIds) : null;
+    }
+
+    public function setTagMatchType(?TagMatchType $tagMatchType): void
+    {
+        $this->tagMatchType = $tagMatchType;
     }
 
     /**

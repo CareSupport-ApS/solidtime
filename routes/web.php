@@ -18,6 +18,13 @@ use App\Service\UserService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
+use App\Http\Controllers\Web\OrganizationController;
+use App\Http\Controllers\Web\OrganizationInvitationController;
+use App\Http\Controllers\Web\OtherBrowserSessionsController;
+use App\Http\Controllers\Web\UserController;
+use App\Http\Controllers\Web\UserProfileController;
+use App\Service\PermissionStore;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Jetstream\Jetstream;
@@ -53,7 +60,7 @@ Route::get('/shared-report', function () {
 
 Route::middleware([
     'auth:web',
-    config('jetstream.auth_session'),
+    'auth.session',
     'verified',
 ])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
@@ -96,7 +103,14 @@ Route::middleware([
 
     Route::get('/members', function () {
         return Inertia::render('Members', [
-            'availableRoles' => array_values(Jetstream::$roles),
+            'availableRoles' => collect(PermissionStore::roleDefinitions())
+                ->map(fn (array $definition, string $key): array => [
+                    'key' => $key,
+                    'name' => $definition['name'],
+                    'description' => $definition['description'],
+                ])
+                ->values()
+                ->all(),
         ]);
     })->name('members');
 
@@ -108,4 +122,26 @@ Route::middleware([
         return Inertia::render('Import');
     })->name('import');
 
+    Route::get('/organizations/create', [OrganizationController::class, 'create'])->name('organizations.create');
+    Route::get('/organizations/{organizationId}', [OrganizationController::class, 'show'])->name('organizations.show');
+    Route::get('/teams/create', function (): RedirectResponse {
+        return to_route('organizations.create');
+    })->name('teams.create');
+    Route::get('/teams/{organizationId}', function (string $organizationId): RedirectResponse {
+        return to_route('organizations.show', [$organizationId]);
+    })->name('teams.show');
+    Route::get('/user/profile', [UserProfileController::class, 'show'])->name('profile.show');
+    Route::delete('/user/other-browser-sessions', [OtherBrowserSessionsController::class, 'destroy'])
+        ->name('other-browser-sessions.destroy');
 });
+
+Route::get('/team-invitations/{invitation}', [OrganizationInvitationController::class, 'accept'])
+    ->middleware(['signed'])
+    ->name('team-invitations.accept'); // Note: legacy naming
+Route::get('/organization-invitations/{invitation}', [OrganizationInvitationController::class, 'accept'])
+    ->middleware(['signed:relative'])
+    ->name('organization-invitations.accept');
+
+Route::get('/users/{user}/verify-email-change', [UserController::class, 'verifyEmailChange'])
+    ->middleware(['auth:web', 'signed:relative'])
+    ->name('users.verify-email-change');

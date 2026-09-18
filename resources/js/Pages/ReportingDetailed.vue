@@ -4,15 +4,12 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageTitle from '@/Components/Common/PageTitle.vue';
 import {
     ChartBarIcon,
-    ChevronLeftIcon,
-    ChevronDoubleLeftIcon,
-    ChevronRightIcon,
-    ChevronDoubleRightIcon,
     ClockIcon,
     EllipsisVerticalIcon,
     ArrowDownTrayIcon,
     LockClosedIcon,
 } from '@heroicons/vue/20/solid';
+import Pagination from '@/packages/ui/src/Pagination.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -43,16 +40,6 @@ import { useClientsQuery } from '@/utils/useClientsQuery';
 import { useClientsStore } from '@/utils/useClients';
 import { getOrganizationCurrencyString } from '@/utils/money';
 import { useMembersQuery } from '@/utils/useMembersQuery';
-import {
-    PaginationEllipsis,
-    PaginationFirst,
-    PaginationLast,
-    PaginationList,
-    PaginationListItem,
-    PaginationNext,
-    PaginationPrev,
-    PaginationRoot,
-} from 'radix-vue';
 import { useQueryClient } from '@tanstack/vue-query';
 import { getCurrentOrganizationId, getCurrentMembershipId } from '@/utils/useUser';
 import ReportingTabNavbar from '@/Components/Common/Reporting/ReportingTabNavbar.vue';
@@ -67,6 +54,7 @@ import ReportingFilterBar from '@/Components/Common/Reporting/ReportingFilterBar
 import { useTimeEntriesReportQuery } from '@/utils/useTimeEntriesReportQuery';
 import { useTimeEntriesMutations } from '@/utils/useTimeEntriesMutations';
 import { useOrganizationQuery } from '@/utils/useOrganizationQuery';
+import type { TagMatchType } from '@/types/reporting';
 
 // TimeEntryRoundingType is now defined in ReportingRoundingControls component
 type TimeEntryRoundingType = 'up' | 'down' | 'nearest';
@@ -84,7 +72,9 @@ const selectedProjects = ref<string[]>([]);
 const selectedMembers = ref<string[]>([]);
 const selectedTasks = ref<string[]>([]);
 const selectedClients = ref<string[]>([]);
+const tagMatchType = ref<TagMatchType>('contains');
 const billable = ref<'true' | 'false' | null>(null);
+const entryType = ref<'work' | 'break' | null>('work');
 const roundingEnabled = ref<boolean>(false);
 const roundingType = ref<TimeEntryRoundingType>('nearest');
 const roundingMinutes = ref<number>(15);
@@ -115,7 +105,9 @@ function getFilterAttributes() {
         task_ids: selectedTasks.value.length > 0 ? selectedTasks.value : undefined,
         client_ids: selectedClients.value.length > 0 ? selectedClients.value : undefined,
         tag_ids: selectedTags.value.length > 0 ? selectedTags.value : undefined,
+        tag_match_type: selectedTags.value.length > 0 ? tagMatchType.value : undefined,
         billable: billable.value !== null ? billable.value : undefined,
+        type: entryType.value !== null ? entryType.value : undefined,
         rounding_type: roundingEnabled.value ? roundingType.value : undefined,
         rounding_minutes: roundingEnabled.value ? roundingMinutes.value : undefined,
     };
@@ -337,7 +329,9 @@ async function downloadExport(format: ExportFormat) {
             v-model:selected-tasks="selectedTasks"
             v-model:selected-clients="selectedClients"
             v-model:selected-tags="selectedTags"
+            v-model:tag-match-type="tagMatchType"
             v-model:billable="billable"
+            v-model:entry-type="entryType"
             v-model:rounding-enabled="roundingEnabled"
             v-model:rounding-type="roundingType"
             v-model:rounding-minutes="roundingMinutes"
@@ -390,6 +384,7 @@ async function downloadExport(format: ExportFormat) {
                     :organization-billable-rate="organization?.billable_rate ?? null"
                     :duplicate-time-entry="() => createTimeEntry(entry)"
                     :members="members"
+                    is-report
                     show-date
                     show-member
                     :time-entry="entry"
@@ -409,62 +404,6 @@ async function downloadExport(format: ExportFormat) {
             </div>
         </div>
 
-        <PaginationRoot
-            v-model:page="currentPage"
-            :total="totalPages"
-            :items-per-page="pageLimit"
-            class="flex justify-center items-center py-8"
-            :sibling-count="1"
-            show-edges>
-            <PaginationList v-slot="{ items }" class="flex items-center space-x-1 relative">
-                <div class="pr-2 flex items-center space-x-1 border-r border-border-primary mr-1">
-                    <PaginationFirst class="navigation-item">
-                        <ChevronDoubleLeftIcon class="w-4"> </ChevronDoubleLeftIcon>
-                    </PaginationFirst>
-                    <PaginationPrev class="mr-4 navigation-item">
-                        <ChevronLeftIcon class="w-4 text-text-tertiary hover:text-text-primary">
-                        </ChevronLeftIcon>
-                    </PaginationPrev>
-                </div>
-                <template v-for="(page, index) in items">
-                    <PaginationListItem
-                        v-if="page.type === 'page'"
-                        :key="index"
-                        class="pagination-item"
-                        :value="page.value">
-                        {{ page.value }}
-                    </PaginationListItem>
-                    <PaginationEllipsis
-                        v-else
-                        :key="page.type"
-                        :index="index"
-                        class="PaginationEllipsis">
-                        <div class="px-2">&#8230;</div>
-                    </PaginationEllipsis>
-                </template>
-                <div class="!ml-2 pl-2 flex items-center space-x-1 border-l border-border-primary">
-                    <PaginationNext class="navigation-item">
-                        <ChevronRightIcon
-                            class="w-4 text-text-tertiary hover:text-text-primary"></ChevronRightIcon>
-                    </PaginationNext>
-                    <PaginationLast class="navigation-item">
-                        <ChevronDoubleRightIcon
-                            class="w-4 text-text-tertiary hover:text-text-primary"></ChevronDoubleRightIcon>
-                    </PaginationLast>
-                </div>
-            </PaginationList>
-        </PaginationRoot>
+        <Pagination v-model:page="currentPage" :total="totalPages" :items-per-page="pageLimit" />
     </AppLayout>
 </template>
-<style lang="postcss">
-.navigation-item {
-    @apply bg-quaternary h-8 w-8 flex items-center justify-center rounded border border-border-primary text-text-tertiary hover:text-text-primary transition cursor-pointer hover:border-border-secondary hover:bg-secondary focus-visible:text-text-primary focus-visible:outline-0 focus-visible:ring-2 focus-visible:ring-ring;
-}
-
-.pagination-item {
-    @apply bg-secondary h-8 w-8 flex items-center justify-center rounded border border-border-tertiary text-text-secondary hover:text-text-primary transition cursor-pointer hover:border-border-secondary hover:bg-secondary focus-visible:text-text-primary focus-visible:outline-0 focus-visible:ring-2 focus-visible:ring-ring;
-}
-.pagination-item[data-selected] {
-    @apply text-text-primary bg-accent-300/10 border border-accent-300/20 rounded-md font-medium hover:bg-accent-300/20 active:bg-accent-300/20 outline-0 focus-visible:ring-2 focus:ring-ring transition ease-in-out duration-150;
-}
-</style>
