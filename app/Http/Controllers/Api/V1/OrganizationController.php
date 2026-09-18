@@ -85,6 +85,9 @@ class OrganizationController extends Controller
         if ($request->getPreventTimeEntriesOnProjectWithIncompleteTasks() !== null) {
             $organization->prevent_time_entries_on_project_with_incomplete_tasks = $request->getPreventTimeEntriesOnProjectWithIncompleteTasks();
         }
+        if ($request->getBreaksEnabled() !== null) {
+            $organization->breaks_enabled = $request->getBreaksEnabled();
+        }
         $hasBillableRate = $request->has('billable_rate');
         if ($hasBillableRate) {
             $oldBillableRate = $organization->billable_rate;

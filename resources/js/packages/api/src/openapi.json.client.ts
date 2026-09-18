@@ -45,14 +45,54 @@ const InvitationResource = z
 const InvitationStoreRequest = z
     .object({ email: z.string().email(), role: z.enum(['admin', 'manager', 'employee']) })
     .passthrough();
+const InvoiceRecipientResource = z
+    .object({
+        id: z.string(),
+        organization_id: z.string(),
+        name: z.string(),
+        vatin: z.union([z.string(), z.null()]),
+        address_line_1: z.union([z.string(), z.null()]),
+        address_line_2: z.union([z.string(), z.null()]),
+        address_line_3: z.union([z.string(), z.null()]),
+        address_post_code: z.union([z.string(), z.null()]),
+        address_city: z.union([z.string(), z.null()]),
+        address_country: z.union([z.string(), z.null()]),
+        phone: z.union([z.string(), z.null()]),
+        email: z.union([z.string(), z.null()]),
+        is_archived: z.boolean(),
+        archived_at: z.union([z.string(), z.null()]),
+        invoices_count: z.number().int(),
+        has_non_draft_invoices: z.boolean(),
+        created_at: z.union([z.string(), z.null()]),
+        updated_at: z.union([z.string(), z.null()]),
+    })
+    .passthrough();
+const InvoiceRecipientCollection = z.array(InvoiceRecipientResource);
+const InvoiceRecipientRequest = z
+    .object({
+        name: z.string(),
+        vatin: z.union([z.string(), z.null()]).optional(),
+        address_line_1: z.union([z.string(), z.null()]).optional(),
+        address_line_2: z.union([z.string(), z.null()]).optional(),
+        address_line_3: z.union([z.string(), z.null()]).optional(),
+        address_post_code: z.union([z.string(), z.null()]).optional(),
+        address_city: z.union([z.string(), z.null()]).optional(),
+        address_country: z.union([z.string(), z.null()]).optional(),
+        phone: z.union([z.string(), z.null()]).optional(),
+        email: z.union([z.string(), z.null()]).optional(),
+        is_archived: z.boolean().optional(),
+    })
+    .passthrough();
 const InvoiceResource = z
     .object({
         id: z.string(),
         organization_id: z.string(),
+        invoice_recipient_id: z.string(),
         reference: z.string(),
         seller_name: z.string(),
-        buyer_name: z.string(),
+        recipient: z.string(),
         status: z.string(),
+        status_label: z.string(),
         date: z.string(),
         due_at: z.string(),
         paid_date: z.string(),
@@ -76,16 +116,7 @@ const InvoiceStoreRequest = z
         seller_address_country: z.union([z.string(), z.null()]).optional(),
         seller_phone: z.union([z.string(), z.null()]).optional(),
         seller_email: z.union([z.string(), z.null()]).optional(),
-        buyer_name: z.string(),
-        buyer_vatin: z.union([z.string(), z.null()]).optional(),
-        buyer_address_line_1: z.union([z.string(), z.null()]).optional(),
-        buyer_address_line_2: z.union([z.string(), z.null()]).optional(),
-        buyer_address_line_3: z.union([z.string(), z.null()]).optional(),
-        buyer_address_post_code: z.union([z.string(), z.null()]).optional(),
-        buyer_address_city: z.union([z.string(), z.null()]).optional(),
-        buyer_address_country: z.union([z.string(), z.null()]).optional(),
-        buyer_phone: z.union([z.string(), z.null()]).optional(),
-        buyer_email: z.union([z.string(), z.null()]).optional(),
+        invoice_recipient_id: z.string(),
         date: z.string(),
         billing_period_start: z.union([z.string(), z.null()]).optional(),
         billing_period_end: z.union([z.string(), z.null()]).optional(),
@@ -130,6 +161,7 @@ const DetailedInvoiceResource = z
     .object({
         id: z.string(),
         organization_id: z.string(),
+        invoice_recipient_id: z.string(),
         reference: z.string(),
         seller_name: z.string(),
         seller_vatin: z.string(),
@@ -141,16 +173,7 @@ const DetailedInvoiceResource = z
         seller_address_country: z.string(),
         seller_phone: z.string(),
         seller_email: z.string(),
-        buyer_name: z.string(),
-        buyer_vatin: z.string(),
-        buyer_address_line_1: z.string(),
-        buyer_address_line_2: z.string(),
-        buyer_address_line_3: z.string(),
-        buyer_address_post_code: z.string(),
-        buyer_address_city: z.string(),
-        buyer_address_country: z.string(),
-        buyer_phone: z.string(),
-        buyer_email: z.string(),
+        recipient: InvoiceRecipientResource,
         paid_date: z.string(),
         due_at: z.string(),
         discount_type: z.string(),
@@ -171,7 +194,7 @@ const DetailedInvoiceResource = z
         entries: z.array(InvoiceEntryResource),
     })
     .passthrough();
-const InvoiceStatus = z.enum(['draft', 'sent', 'cancelled']);
+const InvoiceStatus = z.enum(['draft', 'sent', 'paid', 'cancelled']);
 const InvoiceUpdateRequest = z
     .object({
         status: InvoiceStatus,
@@ -187,16 +210,7 @@ const InvoiceUpdateRequest = z
         seller_address_country: z.union([z.string(), z.null()]),
         seller_phone: z.union([z.string(), z.null()]),
         seller_email: z.union([z.string(), z.null()]),
-        buyer_name: z.string(),
-        buyer_vatin: z.union([z.string(), z.null()]),
-        buyer_address_line_1: z.union([z.string(), z.null()]),
-        buyer_address_line_2: z.union([z.string(), z.null()]),
-        buyer_address_line_3: z.union([z.string(), z.null()]),
-        buyer_address_post_code: z.union([z.string(), z.null()]),
-        buyer_address_city: z.union([z.string(), z.null()]),
-        buyer_address_country: z.union([z.string(), z.null()]),
-        buyer_phone: z.union([z.string(), z.null()]),
-        buyer_email: z.union([z.string(), z.null()]),
+        invoice_recipient_id: z.string(),
         date: z.string(),
         billing_period_start: z.union([z.string(), z.null()]),
         billing_period_end: z.union([z.string(), z.null()]),
@@ -319,6 +333,7 @@ const OrganizationResource = z
         employees_can_see_billable_rates: z.boolean(),
         employees_can_manage_tasks: z.boolean(),
         prevent_overlapping_time_entries: z.boolean(),
+        breaks_enabled: z.boolean(),
         prevent_time_entries_without_project: z.boolean(),
         prevent_time_entries_on_project_with_incomplete_tasks: z.boolean(),
         currency: z.string(),
@@ -338,6 +353,7 @@ const OrganizationUpdateRequest = z
         employees_can_see_billable_rates: z.boolean(),
         employees_can_manage_tasks: z.boolean(),
         prevent_overlapping_time_entries: z.boolean(),
+        breaks_enabled: z.boolean(),
         prevent_time_entries_without_project: z.boolean(),
         prevent_time_entries_on_project_with_incomplete_tasks: z.boolean(),
         number_format: NumberFormat,
@@ -424,6 +440,7 @@ const TimeEntryAggregationType = z.enum([
     'billable',
     'description',
     'tag',
+    'type',
 ]);
 const TimeEntryAggregationTypeInterval = z.enum(['day', 'week', 'month', 'year']);
 const Weekday = z.enum([
@@ -452,6 +469,7 @@ const ReportStoreRequest = z
                 client_ids: z.union([z.array(z.string()), z.null()]).optional(),
                 project_ids: z.union([z.array(z.string()), z.null()]).optional(),
                 tag_ids: z.union([z.array(z.string()), z.null()]).optional(),
+                tag_match_type: z.enum(['contains', 'not_contains']).optional(),
                 task_ids: z.union([z.array(z.string()), z.null()]).optional(),
                 group: TimeEntryAggregationType,
                 sub_group: TimeEntryAggregationType,
@@ -482,9 +500,11 @@ const DetailedReportResource = z
                 active: z.union([z.boolean(), z.null()]),
                 member_ids: z.union([z.array(z.string()), z.null()]),
                 billable: z.union([z.boolean(), z.null()]),
+                time_entry_type: z.union([z.enum(['work', 'break']), z.null()]),
                 client_ids: z.union([z.array(z.string()), z.null()]),
                 project_ids: z.union([z.array(z.string()), z.null()]),
                 tag_ids: z.union([z.array(z.string()), z.null()]),
+                tag_match_type: z.union([z.enum(['contains', 'not_contains']), z.null()]),
                 task_ids: z.union([z.array(z.string()), z.null()]),
                 rounding_type: z.union([z.string(), z.null()]),
                 rounding_minutes: z.union([z.number(), z.null()]),
@@ -633,6 +653,7 @@ const TaskUpdateRequest = z
     .passthrough();
 const start = z.union([z.string(), z.null()]).optional();
 const rounding_minutes = z.union([z.number(), z.null()]).optional();
+const TimeEntryType = z.enum(['work', 'break']);
 const TimeEntryResource = z
     .object({
         id: z.string(),
@@ -646,6 +667,7 @@ const TimeEntryResource = z
         user_id: z.string(),
         tags: z.array(z.string()),
         billable: z.boolean(),
+        type: TimeEntryType,
     })
     .passthrough();
 const TimeEntryStoreRequest = z
@@ -656,6 +678,7 @@ const TimeEntryStoreRequest = z
         start: z.string(),
         end: z.union([z.string(), z.null()]).optional(),
         billable: z.boolean(),
+        type: TimeEntryType.optional(),
         description: z.union([z.string(), z.null()]).optional(),
         tags: z.union([z.array(z.string()), z.null()]).optional(),
     })
@@ -669,6 +692,7 @@ const TimeEntryUpdateMultipleRequest = z
                 project_id: z.union([z.string(), z.null()]),
                 task_id: z.union([z.string(), z.null()]),
                 billable: z.boolean(),
+                type: TimeEntryType,
                 description: z.union([z.string(), z.null()]),
                 tags: z.union([z.array(z.string()), z.null()]),
             })
@@ -684,6 +708,7 @@ const TimeEntryUpdateRequest = z
         start: z.string(),
         end: z.union([z.string(), z.null()]),
         billable: z.boolean(),
+        type: TimeEntryType,
         description: z.union([z.string(), z.null()]),
         tags: z.union([z.array(z.string()), z.null()]),
     })
@@ -698,6 +723,7 @@ const UserResource = z
         profile_photo_url: z.string(),
         timezone: z.string(),
         week_start: Weekday,
+        send_time_entry_still_running_email: z.boolean(),
     })
     .passthrough();
 const UserUpdateRequest = z
@@ -707,6 +733,7 @@ const UserUpdateRequest = z
         photo: z.union([z.string(), z.null()]),
         timezone: z.string(),
         week_start: Weekday,
+        send_time_entry_still_running_email: z.boolean(),
     })
     .partial()
     .passthrough();
@@ -776,6 +803,7 @@ export const schemas = {
     TaskUpdateRequest,
     start,
     rounding_minutes,
+    TimeEntryType,
     TimeEntryResource,
     TimeEntryStoreRequest,
     TimeEntryUpdateMultipleRequest,
@@ -1889,6 +1917,125 @@ const endpoints = makeApi([
     },
     {
         method: 'get',
+        path: '/v1/organizations/:organization/invoice-recipients',
+        alias: 'getInvoiceRecipients',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.object({ data: InvoiceRecipientCollection }).passthrough(),
+    },
+    {
+        method: 'post',
+        path: '/v1/organizations/:organization/invoice-recipients',
+        alias: 'createInvoiceRecipient',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'body',
+                type: 'Body',
+                schema: InvoiceRecipientRequest,
+            },
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.object({ data: InvoiceRecipientResource }).passthrough(),
+    },
+    {
+        method: 'get',
+        path: '/v1/organizations/:organization/invoice-recipients/:invoiceRecipient',
+        alias: 'getInvoiceRecipient',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+            {
+                name: 'invoiceRecipient',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.object({ data: InvoiceRecipientResource }).passthrough(),
+    },
+    {
+        method: 'put',
+        path: '/v1/organizations/:organization/invoice-recipients/:invoiceRecipient',
+        alias: 'updateInvoiceRecipient',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'body',
+                type: 'Body',
+                schema: InvoiceRecipientRequest,
+            },
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+            {
+                name: 'invoiceRecipient',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.object({ data: InvoiceRecipientResource }).passthrough(),
+    },
+    {
+        method: 'post',
+        path: '/v1/organizations/:organization/invoice-recipients/:invoiceRecipient/duplicate',
+        alias: 'duplicateInvoiceRecipient',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'body',
+                type: 'Body',
+                schema: InvoiceRecipientRequest,
+            },
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+            {
+                name: 'invoiceRecipient',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.object({ data: InvoiceRecipientResource }).passthrough(),
+    },
+    {
+        method: 'delete',
+        path: '/v1/organizations/:organization/invoice-recipients/:invoiceRecipient',
+        alias: 'deleteInvoiceRecipient',
+        requestFormat: 'json',
+        parameters: [
+            {
+                name: 'organization',
+                type: 'Path',
+                schema: z.string(),
+            },
+            {
+                name: 'invoiceRecipient',
+                type: 'Path',
+                schema: z.string(),
+            },
+        ],
+        response: z.void(),
+    },
+    {
+        method: 'get',
         path: '/v1/organizations/:organization/invoices',
         alias: 'getInvoices',
         requestFormat: 'json',
@@ -1902,6 +2049,11 @@ const endpoints = makeApi([
                 name: 'page',
                 type: 'Query',
                 schema: z.number().int().gte(1).lte(2147483647).optional(),
+            },
+            {
+                name: 'status',
+                type: 'Query',
+                schema: InvoiceStatus.optional(),
             },
         ],
         response: z.object({ data: InvoiceCollection }).passthrough(),
@@ -3739,6 +3891,11 @@ Users with the permission &#x60;time-entries:view:own&#x60; can only use this en
                 schema: z.enum(['true', 'false']).optional(),
             },
             {
+                name: 'type',
+                type: 'Query',
+                schema: TimeEntryType.optional(),
+            },
+            {
                 name: 'limit',
                 type: 'Query',
                 schema: z.number().int().gte(1).lte(500).optional(),
@@ -3787,6 +3944,11 @@ Users with the permission &#x60;time-entries:view:own&#x60; can only use this en
                 name: 'tag_ids',
                 type: 'Query',
                 schema: z.array(z.string()).min(1).optional(),
+            },
+            {
+                name: 'tag_match_type',
+                type: 'Query',
+                schema: z.enum(['contains', 'not_contains']).optional(),
             },
             {
                 name: 'task_ids',
@@ -3892,7 +4054,9 @@ Users with the permission &#x60;time-entries:view:own&#x60; can only use this en
                 schema: z.string(),
             },
         ],
-        response: z.object({ success: z.string(), error: z.string() }).passthrough(),
+        response: z
+            .object({ success: z.array(z.string()), error: z.array(z.string()) })
+            .passthrough(),
         errors: [
             {
                 status: 401,
@@ -4082,6 +4246,7 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                         'billable',
                         'description',
                         'tag',
+                        'type',
                     ])
                     .optional(),
             },
@@ -4101,6 +4266,7 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                         'billable',
                         'description',
                         'tag',
+                        'type',
                     ])
                     .optional(),
             },
@@ -4133,6 +4299,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 name: 'billable',
                 type: 'Query',
                 schema: z.enum(['true', 'false']).optional(),
+            },
+            {
+                name: 'type',
+                type: 'Query',
+                schema: TimeEntryType.optional(),
             },
             {
                 name: 'fill_gaps_in_time_groups',
@@ -4168,6 +4339,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 name: 'tag_ids',
                 type: 'Query',
                 schema: z.array(z.string()).min(1).optional(),
+            },
+            {
+                name: 'tag_match_type',
+                type: 'Query',
+                schema: z.enum(['contains', 'not_contains']).optional(),
             },
             {
                 name: 'task_ids',
@@ -4269,6 +4445,7 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                     'billable',
                     'description',
                     'tag',
+                    'type',
                 ]),
             },
             {
@@ -4286,6 +4463,7 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                     'billable',
                     'description',
                     'tag',
+                    'type',
                 ]),
             },
             {
@@ -4322,6 +4500,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 name: 'billable',
                 type: 'Query',
                 schema: z.enum(['true', 'false']).optional(),
+            },
+            {
+                name: 'type',
+                type: 'Query',
+                schema: TimeEntryType.optional(),
             },
             {
                 name: 'fill_gaps_in_time_groups',
@@ -4362,6 +4545,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 name: 'tag_ids',
                 type: 'Query',
                 schema: z.array(z.string()).min(1).optional(),
+            },
+            {
+                name: 'tag_match_type',
+                type: 'Query',
+                schema: z.enum(['contains', 'not_contains']).optional(),
             },
             {
                 name: 'task_ids',
@@ -4447,6 +4635,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 schema: z.enum(['true', 'false']).optional(),
             },
             {
+                name: 'type',
+                type: 'Query',
+                schema: TimeEntryType.optional(),
+            },
+            {
                 name: 'limit',
                 type: 'Query',
                 schema: z.number().int().gte(1).lte(500).optional(),
@@ -4490,6 +4683,11 @@ If the group parameters are all set to &#x60;null&#x60; or are all missing, the 
                 name: 'tag_ids',
                 type: 'Query',
                 schema: z.array(z.string()).min(1).optional(),
+            },
+            {
+                name: 'tag_match_type',
+                type: 'Query',
+                schema: z.enum(['contains', 'not_contains']).optional(),
             },
             {
                 name: 'task_ids',

@@ -16,6 +16,7 @@ export type Invitation = InvitationsIndexResponse['data'][0];
 
 export type TimeEntryResponse = ZodiosResponseByAlias<SolidTimeApi, 'getTimeEntries'>;
 export type TimeEntry = TimeEntryResponse['data'][0];
+export type TimeEntryType = TimeEntry['type'];
 
 export type CreateTimeEntryBody = ZodiosBodyByAlias<SolidTimeApi, 'createTimeEntry'>;
 
@@ -117,6 +118,11 @@ export type DetailedInvoiceResponse = ZodiosResponseByAlias<SolidTimeApi, 'getIn
 export type DetailedInvoice = DetailedInvoiceResponse['data'];
 
 export type InvoiceIndexEntry = ZodiosResponseByAlias<SolidTimeApi, 'getInvoices'>['data'][0];
+export type InvoiceRecipient = ZodiosResponseByAlias<
+    SolidTimeApi,
+    'getInvoiceRecipients'
+>['data'][0];
+export type InvoiceRecipientBody = ZodiosBodyByAlias<SolidTimeApi, 'createInvoiceRecipient'>;
 
 export type UpdateInvoiceSettings = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoiceSettings'>;
 

@@ -75,11 +75,32 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Hosts
+    |--------------------------------------------------------------------------
+    |
+    | Additional hostnames (besides the APP_URL host and its subdomains) that
+    | the application is allowed to respond on. This is needed for multi-host
+    | setups, e.g. reaching the instance over both a public domain and a
+    | Tailscale name. A request arriving on any host that is neither APP_URL
+    | (nor a subdomain of it) nor listed here is rejected, which prevents
+    | Host-header poisoning of password reset and other out-of-band links.
+    |
+    | See App\Http\Middleware\TrustHosts.
+    |
+    */
+
+    'trusted_hosts' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('TRUSTED_HOSTS', ''))
+    ))),
+
     'asset_url' => env('ASSET_URL'),
 
     'force_https' => (bool) env('APP_FORCE_HTTPS', false),
 
-    'enable_registration' => (bool) env('APP_ENABLE_REGISTRATION', false),
+    'enable_registration' => env('APP_ENABLE_REGISTRATION', 'off'),
 
     'local_email_verification' => (bool) env('APP_LOCAL_EMAIL_VERIFICATION', false),
 
@@ -136,6 +157,21 @@ return [
     'faker_locale' => 'en_US',
 
     'pagination_per_page_default' => (int) env('PAGINATION_PER_PAGE_DEFAULT', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | The number of API requests allowed per minute, counted per user for
+    | authenticated requests and per IP address for guest requests. These
+    | limits are only enforced when the application runs in production.
+    |
+    */
+
+    'api_rate_limit_authenticated_per_minute' => (int) (env('API_RATE_LIMIT_AUTH_PER_MINUTE') ?: 200),
+
+    'api_rate_limit_guest_per_minute' => (int) (env('API_RATE_LIMIT_GUEST_PER_MINUTE') ?: 60),
 
     /*
     |--------------------------------------------------------------------------

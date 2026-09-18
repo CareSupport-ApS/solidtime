@@ -18,11 +18,31 @@ use Illuminate\Support\Facades\Mail;
 
 class InvitationService
 {
+    public function hasAcceptedInvitationForEmail(string $email): bool
+    {
+        return OrganizationInvitation::query()
+            ->whereRaw('lower(email) = ?', [strtolower($email)])
+            ->whereNotNull('accepted_at')
+            ->exists();
+    }
+
+    public function hasPendingInvitationForEmail(string $email): bool
+    {
+        return OrganizationInvitation::query()
+            ->whereRaw('lower(email) = ?', [strtolower($email)])
+            ->whereNull('accepted_at')
+            ->exists();
+    }
+
     /**
      * @throws UserIsAlreadyMemberOfOrganizationApiException|InvitationForTheEmailAlreadyExistsApiException
      */
     public function inviteUser(Organization $organization, string $email, Role $role, User $inviter): OrganizationInvitation
     {
+        // Normalize the email so it matches how user emails are stored (see UserService::createUser),
+        // otherwise a mixed-case invite silently fails to link on registration.
+        $email = strtolower($email);
+
         if (app(MemberService::class)->isEmailAlreadyMember($organization, $email)) {
             throw new UserIsAlreadyMemberOfOrganizationApiException;
         }
@@ -55,7 +75,7 @@ class InvitationService
         $organizations = new Collection;
 
         $invitations = OrganizationInvitation::query()
-            ->where('email', $user->email)
+            ->whereRaw('lower(email) = ?', [strtolower($user->email)])
             ->whereNotNull('accepted_at')
             ->get();
 

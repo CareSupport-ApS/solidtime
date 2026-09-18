@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useBreaksEnabled } from '@/packages/ui/src/utils/useBreaksEnabled';
 import { CheckCircleIcon, TagIcon, UserGroupIcon } from '@heroicons/vue/20/solid';
 import { FolderIcon } from '@heroicons/vue/16/solid';
+import { Check, Coffee } from '@lucide/vue';
+import { RadioGroupIndicator, RadioGroupItem, RadioGroupRoot, type AcceptableValue } from 'reka-ui';
 import BillableIcon from '@/packages/ui/src/Icons/BillableIcon.vue';
 import ReportingRoundingControls from '@/Components/Common/Reporting/ReportingRoundingControls.vue';
 import TaskMultiselectDropdown from '@/Components/Common/Task/TaskMultiselectDropdown.vue';
@@ -14,6 +17,7 @@ import DateRangePicker from '@/packages/ui/src/Input/DateRangePicker.vue';
 import TagDropdown from '@/packages/ui/src/Tag/TagDropdown.vue';
 import { useTagsQuery } from '@/utils/useTagsQuery';
 import { useTagsStore } from '@/utils/useTags';
+import type { TagMatchType } from '@/types/reporting';
 
 type TimeEntryRoundingType = 'up' | 'down' | 'nearest';
 
@@ -22,7 +26,9 @@ const selectedProjects = defineModel<string[]>('selectedProjects', { required: t
 const selectedTasks = defineModel<string[]>('selectedTasks', { required: true });
 const selectedClients = defineModel<string[]>('selectedClients', { required: true });
 const selectedTags = defineModel<string[]>('selectedTags', { required: true });
+const tagMatchType = defineModel<TagMatchType>('tagMatchType', { required: true });
 const billable = defineModel<'true' | 'false' | null>('billable', { required: true });
+const entryType = defineModel<'work' | 'break' | null>('entryType', { required: true });
 const roundingEnabled = defineModel<boolean>('roundingEnabled', { required: true });
 const roundingType = defineModel<TimeEntryRoundingType>('roundingType', { required: true });
 const roundingMinutes = defineModel<number>('roundingMinutes', { required: true });
@@ -33,7 +39,19 @@ const emit = defineEmits<{
     submit: [];
 }>();
 
+const breaksEnabled = useBreaksEnabled();
+
 const { tags } = useTagsQuery();
+
+const tagMatchOptions: { value: TagMatchType; label: string }[] = [
+    { value: 'contains', label: 'Contains' },
+    { value: 'not_contains', label: 'Does Not Contain' },
+];
+
+function selectTagMatchType(value: AcceptableValue) {
+    tagMatchType.value = value as TagMatchType;
+    emit('submit');
+}
 
 async function createTag(name: string) {
     return await useTagsStore().createTag(name);
@@ -93,6 +111,34 @@ async function createTag(name: string) {
                             title="Tags"
                             :icon="TagIcon" />
                     </template>
+                    <template #content-before-list>
+                        <div class="mt-2 border-b border-card-background-separator pb-2">
+                            <div
+                                id="tag-match-type-label"
+                                class="mb-1.5 px-2 text-xs font-medium text-text-tertiary uppercase">
+                                Match
+                            </div>
+                            <RadioGroupRoot
+                                :model-value="tagMatchType"
+                                aria-labelledby="tag-match-type-label"
+                                class="space-y-1"
+                                @update:model-value="selectTagMatchType">
+                                <RadioGroupItem
+                                    v-for="option in tagMatchOptions"
+                                    :key="option.value"
+                                    :value="option.value"
+                                    class="relative flex w-full items-center rounded-md py-1.5 pl-2 pr-8 text-left text-sm font-medium text-text-secondary hover:bg-card-background-active data-[state=checked]:text-text-primary">
+                                    {{ option.label }}
+                                    <span
+                                        class="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+                                        <RadioGroupIndicator>
+                                            <Check class="h-4 w-4" />
+                                        </RadioGroupIndicator>
+                                    </span>
+                                </RadioGroupItem>
+                            </RadioGroupRoot>
+                        </div>
+                    </template>
                 </TagDropdown>
 
                 <Select v-model="billable" @update:model-value="emit('submit')">
@@ -118,6 +164,38 @@ async function createTag(name: string) {
                         <SelectItem :value="null">Both</SelectItem>
                         <SelectItem value="true">Billable</SelectItem>
                         <SelectItem value="false">Non Billable</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select
+                    v-if="breaksEnabled"
+                    v-model="entryType"
+                    @update:model-value="emit('submit')">
+                    <SelectTrigger
+                        size="sm"
+                        variant="outline"
+                        :active="entryType !== null"
+                        :show-chevron="false">
+                        <SelectValue class="flex items-center gap-2">
+                            <Coffee
+                                class="h-4 w-4"
+                                :class="
+                                    entryType !== null
+                                        ? 'dark:text-accent-300/80 text-accent-400/80'
+                                        : 'text-text-quaternary'
+                                " />
+                            <span class="text-text-secondary">{{
+                                entryType === null
+                                    ? 'Type'
+                                    : entryType === 'break'
+                                      ? 'Breaks'
+                                      : 'Work time'
+                            }}</span>
+                        </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem :value="null">Both</SelectItem>
+                        <SelectItem value="work">Work time</SelectItem>
+                        <SelectItem value="break">Breaks</SelectItem>
                     </SelectContent>
                 </Select>
                 <ReportingRoundingControls

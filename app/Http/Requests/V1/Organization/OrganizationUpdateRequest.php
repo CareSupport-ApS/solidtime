@@ -57,6 +57,9 @@ class OrganizationUpdateRequest extends BaseFormRequest
             'prevent_time_entries_on_project_with_incomplete_tasks' => [
                 'boolean',
             ],
+            'breaks_enabled' => [
+                'boolean',
+            ],
             'number_format' => [
                 Rule::enum(NumberFormat::class),
             ],
@@ -130,6 +133,11 @@ class OrganizationUpdateRequest extends BaseFormRequest
     public function getPreventOverlappingTimeEntries(): ?bool
     {
         return $this->has('prevent_overlapping_time_entries') ? $this->boolean('prevent_overlapping_time_entries') : null;
+    }
+
+    public function getBreaksEnabled(): ?bool
+    {
+        return $this->has('breaks_enabled') ? $this->boolean('breaks_enabled') : null;
     }
 
     public function getPreventTimeEntriesWithoutProject(): ?bool

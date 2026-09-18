@@ -19,11 +19,13 @@ const form = ref<{
     prevent_time_entries_without_project: boolean;
     prevent_time_entries_on_project_with_incomplete_tasks: boolean;
     employees_can_manage_tasks: boolean;
+    breaks_enabled: boolean;
 }>({
     prevent_overlapping_time_entries: false,
     prevent_time_entries_without_project: false,
     prevent_time_entries_on_project_with_incomplete_tasks: false,
     employees_can_manage_tasks: false,
+    breaks_enabled: false,
 });
 
 onMounted(async () => {
@@ -34,6 +36,7 @@ onMounted(async () => {
     form.value.prevent_time_entries_on_project_with_incomplete_tasks =
         organization.value?.prevent_time_entries_on_project_with_incomplete_tasks ?? false;
     form.value.employees_can_manage_tasks = organization.value?.employees_can_manage_tasks ?? false;
+    form.value.breaks_enabled = organization.value?.breaks_enabled ?? false;
 });
 
 const mutation = useMutation({
@@ -50,6 +53,7 @@ async function submit() {
         prevent_time_entries_on_project_with_incomplete_tasks:
             form.value.prevent_time_entries_on_project_with_incomplete_tasks,
         employees_can_manage_tasks: form.value.employees_can_manage_tasks,
+        breaks_enabled: form.value.breaks_enabled,
     });
 }
 </script>
@@ -78,6 +82,10 @@ async function submit() {
                     <FieldLabel for="employeesCanManageTasks"
                         >Allow Employees to manage tasks</FieldLabel
                     >
+                </Field>
+                <Field orientation="horizontal">
+                    <Checkbox id="breaksEnabled" v-model:checked="form.breaks_enabled" />
+                    <FieldLabel for="breaksEnabled">Allow tracking breaks</FieldLabel>
                 </Field>
                 <Field orientation="horizontal">
                     <Checkbox

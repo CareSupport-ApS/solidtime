@@ -49,6 +49,7 @@ import type { ExportFormat } from '@/types/reporting';
 import { getRandomColorWithSeed } from '@/packages/ui/src/utils/color';
 import { useProjectsQuery } from '@/utils/useProjectsQuery';
 import { useAggregatedTimeEntriesQuery } from '@/utils/useAggregatedTimeEntriesQuery';
+import type { TagMatchType } from '@/types/reporting';
 
 type TimeEntryRoundingType = 'up' | 'down' | 'nearest';
 
@@ -67,8 +68,10 @@ const selectedProjects = ref<string[]>([]);
 const selectedMembers = ref<string[]>([]);
 const selectedTasks = ref<string[]>([]);
 const selectedClients = ref<string[]>([]);
+const tagMatchType = ref<TagMatchType>('contains');
 
 const billable = ref<'true' | 'false' | null>(null);
+const entryType = ref<'work' | 'break' | null>('work');
 const roundingEnabled = ref<boolean>(false);
 const roundingType = ref<TimeEntryRoundingType>('nearest');
 const roundingMinutes = ref<number>(15);
@@ -122,7 +125,9 @@ const filterParams = computed<AggregatedTimeEntriesQueryParams>(() => {
         task_ids: selectedTasks.value.length > 0 ? selectedTasks.value : undefined,
         client_ids: selectedClients.value.length > 0 ? selectedClients.value : undefined,
         tag_ids: selectedTags.value.length > 0 ? selectedTags.value : undefined,
+        tag_match_type: selectedTags.value.length > 0 ? tagMatchType.value : undefined,
         billable: billable.value !== null ? billable.value : undefined,
+        type: entryType.value !== null ? entryType.value : undefined,
         member_id: getCurrentRole() === 'employee' ? getCurrentMembershipId() : undefined,
         rounding_type: roundingEnabled.value ? roundingType.value : undefined,
         rounding_minutes: roundingEnabled.value ? roundingMinutes.value : undefined,
@@ -157,7 +162,7 @@ const aggregatedTableTimeEntries = computed<AggregatedTimeEntries | undefined>((
 });
 
 const reportProperties = computed(() => {
-    const { billable: billableFilter, ...rest } = filterParams.value;
+    const { billable: billableFilter, type: typeFilter, ...rest } = filterParams.value;
 
     let billableValue: boolean | null = null;
     if (billableFilter === 'true') {
@@ -169,6 +174,7 @@ const reportProperties = computed(() => {
     return {
         ...rest,
         billable: billableValue,
+        time_entry_type: typeFilter ?? null,
         group: group.value,
         sub_group: subGroup.value,
         history_group: getOptimalGroupingOption(startDate.value, endDate.value),
@@ -234,7 +240,8 @@ const groupedPieChartData = computed(() => {
         aggregatedTableTimeEntries.value?.grouped_data?.map((entry) => {
             const name = getNameForReportingRowEntry(
                 entry.key,
-                aggregatedTableTimeEntries.value?.grouped_type ?? null
+                aggregatedTableTimeEntries.value?.grouped_type ?? null,
+                organization?.value?.date_format
             );
             let color = getRandomColorWithSeed(entry.key ?? 'none');
             if (
@@ -249,11 +256,7 @@ const groupedPieChartData = computed(() => {
             }
             return {
                 value: entry.seconds,
-                name:
-                    getNameForReportingRowEntry(
-                        entry.key,
-                        aggregatedTableTimeEntries.value?.grouped_type ?? null
-                    ) ?? '',
+                name: name ?? '',
                 color: color,
             };
         }) ?? []
@@ -263,18 +266,25 @@ const groupedPieChartData = computed(() => {
 const tableData = computed(() => {
     return aggregatedTableTimeEntries.value?.grouped_data?.map((entry) => {
         return {
+            key: entry.key,
             seconds: entry.seconds,
             cost: entry.cost,
             description: getNameForReportingRowEntry(
                 entry.key,
-                aggregatedTableTimeEntries.value?.grouped_type ?? null
+                aggregatedTableTimeEntries.value?.grouped_type ?? null,
+                organization?.value?.date_format
             ),
             grouped_data:
                 entry.grouped_data?.map((el) => {
                     return {
+                        key: el.key,
                         seconds: el.seconds,
                         cost: el.cost,
-                        description: getNameForReportingRowEntry(el.key, entry.grouped_type),
+                        description: getNameForReportingRowEntry(
+                            el.key,
+                            entry.grouped_type,
+                            organization?.value?.date_format
+                        ),
                     };
                 }) ?? [],
         };
@@ -366,7 +376,9 @@ const tableData = computed(() => {
         v-model:selected-tasks="selectedTasks"
         v-model:selected-clients="selectedClients"
         v-model:selected-tags="selectedTags"
+        v-model:tag-match-type="tagMatchType"
         v-model:billable="billable"
+        v-model:entry-type="entryType"
         v-model:rounding-enabled="roundingEnabled"
         v-model:rounding-type="roundingType"
         v-model:rounding-minutes="roundingMinutes"
@@ -413,9 +425,8 @@ const tableData = computed(() => {
                         ">
                         <ReportingRow
                             v-for="entry in tableData"
-                            :key="entry.description ?? 'none'"
+                            :key="entry.key ?? 'none'"
                             :currency="getOrganizationCurrencyString()"
-                            :type="aggregatedTableTimeEntries.grouped_type"
                             :show-cost="showBillableRate"
                             :entry="entry"></ReportingRow>
                         <div class="contents [&>*]:transition text-text-tertiary [&>*]:h-[50px]">
