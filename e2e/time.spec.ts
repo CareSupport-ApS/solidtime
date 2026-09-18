@@ -39,6 +39,10 @@ function getMonthFromTimestamp(timestamp: string): number {
     return new Date(timestamp).getUTCMonth() + 1;
 }
 
+async function goToProfilePage(page: Page) {
+    await page.goto(PLAYWRIGHT_BASE_URL + '/user/profile');
+}
+
 async function goToTimeOverview(page: Page) {
     await page.goto(PLAYWRIGHT_BASE_URL + '/time');
 }
@@ -65,6 +69,14 @@ async function createEmptyTimeEntry(page: Page) {
             (response) => response.url().includes('/time-entries') && response.status() === 200
         ),
     ]);
+}
+
+async function setTimeEntriesGrouping(page: Page, enabled: boolean) {
+    await goToProfilePage(page);
+    const checkbox = page.getByLabel('Group similar time entries');
+    const isChecked = await checkbox.isChecked();
+    if (isChecked !== enabled) await checkbox.click();
+    await goToTimeOverview(page);
 }
 
 test('test that starting and stopping an empty time entry shows a new time entry in the overview', async ({
@@ -333,6 +345,30 @@ test.skip('test that load more works when the end of page is reached', async ({ 
     await expect(page.locator('body')).toHaveText(/All time entries are loaded!/);
 });
 
+test('test that Group similar time entries option is affected', async ({ page }) => {
+    // Enable grouping
+    await setTimeEntriesGrouping(page, true);
+
+    // Create 2 similar time entries
+    await createEmptyTimeEntry(page);
+    await page.waitForSelector('[data-testid="time_entry_row"]', { timeout: 1000 });
+    await createEmptyTimeEntry(page);
+
+    // Verify similar time entries are grouped
+    await expect(page.getByTestId('grouped_items_count_button').first()).toBeVisible({
+        timeout: 1000,
+    });
+
+    // Disable grouping
+    await setTimeEntriesGrouping(page, false);
+
+    // Verify similar time entries are not grouped
+    await expect(page.locator('[data-testid="time_entry_row"]')).toHaveCount(2, { timeout: 1000 });
+    await expect(page.locator('[data-testid="grouped_items_count_button"]')).toHaveCount(0, {
+        timeout: 1000,
+    });
+});
+
 // TODO: Test that updating the time entry start / end times works while it is running
 
 // TODO: Test for project update
@@ -426,7 +462,7 @@ test('test that setting a date in the create modal works', async ({ page }) => {
     await startDatePicker.click();
 
     // Wait for calendar to appear
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
 
     // Navigate to previous month and select the 15th (a day that's always in the middle of the month)
@@ -479,7 +515,7 @@ test('test that updating the date via the time entry row range selector works', 
     await startDatePicker.click();
 
     // Wait for the calendar to appear and select a day
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
 
     // Navigate to previous month and select the 5th
@@ -532,7 +568,7 @@ test('test that updating the end date via the time entry row range selector work
     await endDatePicker.click();
 
     // Wait for the calendar to appear
-    const calendarGrid = page.getByRole('grid');
+    const calendarGrid = page.getByRole('gridcell').first();
     await expect(calendarGrid).toBeVisible({ timeout: 5000 });
 
     // Navigate to next month and select the 20th (to ensure end > start)

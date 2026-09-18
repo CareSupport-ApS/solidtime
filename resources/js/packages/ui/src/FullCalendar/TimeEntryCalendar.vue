@@ -57,7 +57,7 @@ import type {
 import type { Dayjs } from 'dayjs';
 
 const emit = defineEmits<{
-    (e: 'dates-change', payload: { start: Date; end: Date }): void;
+    (e: 'dates-change', payload: { start: Dayjs; end: Dayjs }): void;
     (e: 'refresh'): void;
 }>();
 
@@ -163,6 +163,7 @@ const {
     getActivityBoxActivities,
     getActivityPercentage,
     getActivityText,
+    getTopActivity,
 } = useActivityBoxes({
     activityPeriods: () => props.activityPeriods,
     viewDays,
@@ -280,6 +281,22 @@ watch(showEditTimeEntryModal, (value) => {
     }
 });
 
+/**
+ * Guards slot pointer-down so that clicks which dismiss an open Reka UI
+ * layer (context menu, popover, dialog) don't simultaneously start a
+ * new time-entry selection on the calendar grid.
+ *
+ * Because Reka's DismissableLayer registers its document-level
+ * `pointerdown` listener *without* capture, it fires AFTER the
+ * calendar grid's own handler. That means when this guard runs,
+ * `contextMenuOpen` (and modal refs) still reflect the *open* state.
+ */
+function guardedSlotPointerDown(e: PointerEvent) {
+    if (contextMenuOpen.value) return;
+    if (showCreateTimeEntryModal.value || showEditTimeEntryModal.value) return;
+    onSlotPointerDown(e);
+}
+
 const scrollToCurrentTime = () => {
     nextTick(() => {
         if (!scrollerRef.value) return;
@@ -312,6 +329,18 @@ watch(
         emitDatesChange();
     },
     { deep: true }
+);
+
+let hasScrolledOnLoad = false;
+
+watch(
+    () => props.loading,
+    (loading) => {
+        if (!loading && !hasScrolledOnLoad) {
+            hasScrolledOnLoad = true;
+            scrollToCurrentTime();
+        }
+    }
 );
 
 onMounted(() => {
@@ -465,7 +494,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                         <div
                             class="fc-header-scroll flex border-b border-border shrink-0 sticky top-0 z-10 bg-default-background">
                             <div
-                                class="shrink-0 bg-background border-r border-border"
+                                class="shrink-0 bg-default-background border-r border-border"
                                 :style="{
                                     width: TIME_AXIS_WIDTH + 'px',
                                     minWidth: TIME_AXIS_WIDTH + 'px',
@@ -478,7 +507,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                 <div
                                     v-for="day in viewDays"
                                     :key="day.format('YYYY-MM-DD')"
-                                    class="fc-col-header-cell border-r border-b border-border px-2 py-3 bg-default-background text-center"
+                                    class="fc-col-header-cell border-r border-border px-2 py-3 bg-default-background text-center"
                                     :class="{
                                         'bg-secondary': isToday(day),
                                         'fc-day-today': isToday(day),
@@ -497,7 +526,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                         <div ref="scrollerRef" class="fc-scroller">
                             <div class="flex min-w-0">
                                 <div
-                                    class="shrink-0 bg-background border-r border-border"
+                                    class="shrink-0 bg-default-background border-r border-border"
                                     :style="{
                                         width: TIME_AXIS_WIDTH + 'px',
                                         minWidth: TIME_AXIS_WIDTH + 'px',
@@ -514,7 +543,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                         :style="{ height: SLOT_HEIGHT + 'px' }">
                                         <span
                                             v-if="slot.isHour"
-                                            class="fc-timegrid-slot-label-cushion text-[0.8125rem] text-muted-foreground leading-none block">
+                                            class="fc-timegrid-slot-label-cushion text-[0.8125rem] text-muted-foreground leading-none block font-light">
                                             {{ formatSlotLabel(slot.minutes / 60) }}
                                         </span>
                                     </div>
@@ -522,14 +551,32 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
 
                                 <div
                                     class="flex-1 min-w-0 relative"
-                                    @pointerdown="onSlotPointerDown($event)">
+                                    @pointerdown="guardedSlotPointerDown($event)">
                                     <div
-                                        class="bg-background"
+                                        class="bg-default-background relative"
                                         :style="{ height: totalGridHeight + 'px' }">
+                                        <div
+                                            class="absolute inset-0 grid"
+                                            :style="{
+                                                gridTemplateColumns:
+                                                    'repeat(' + viewDays.length + ', 1fr)',
+                                            }">
+                                            <div
+                                                v-for="day in viewDays"
+                                                :key="'bg-' + day.format('YYYY-MM-DD')"
+                                                :style="
+                                                    isToday(day)
+                                                        ? {
+                                                              backgroundColor:
+                                                                  'var(--theme-color-default-background)',
+                                                          }
+                                                        : undefined
+                                                " />
+                                        </div>
                                         <div
                                             v-for="slot in slots"
                                             :key="'lane-' + slot.time"
-                                            class="fc-timegrid-slot fc-timegrid-slot-lane border-t border-border box-border"
+                                            class="fc-timegrid-slot fc-timegrid-slot-lane border-t border-border box-border relative"
                                             :class="{
                                                 'fc-timegrid-slot-minor border-dotted':
                                                     !slot.isHour,
@@ -581,6 +628,8 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                             :get-activity-box-activities="getActivityBoxActivities"
                                             :get-activity-percentage="getActivityPercentage"
                                             :get-activity-text="getActivityText"
+                                            :get-top-activity="getTopActivity"
+                                            :is-day-view="activeView === 'timeGridDay'"
                                             :show-selection="
                                                 isSelecting || showCreateTimeEntryModal
                                             "
@@ -599,6 +648,7 @@ function getEventDurationSeconds(dayEvent: DayEvent, dayStr: string): number {
                                             :selection-height="selectionHeight"
                                             :selection-end-top="selectionEndTop"
                                             :selection-end-height="selectionEndHeight"
+                                            @activity-pointerdown="guardedSlotPointerDown"
                                             @event-pointerdown="
                                                 (e, dayEvent) =>
                                                     onEventPointerDown(e, dayEvent.event, dayEvent)

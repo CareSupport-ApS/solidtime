@@ -22,9 +22,7 @@ export interface Organization {
     currency: string;
     created_at: string | null;
     updated_at: string | null;
-    owner: User;
-    users: User[];
-    team_invitations: OrganizationInvitation[];
+    owner: Pick<User, 'id' | 'name' | 'profile_photo_url'>;
 }
 export interface OrganizationInvitation {
     id: string;
@@ -65,6 +63,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
+    pending_email: string | null;
     email_verified_at: string | null;
     password?: string;
     remember_token?: string | null;

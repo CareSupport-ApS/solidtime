@@ -11,10 +11,12 @@ import type {
     Client,
 } from '@/packages/api/src';
 
-import { PlusIcon, PlusCircleIcon, MinusIcon, XMarkIcon } from '@heroicons/vue/16/solid';
+import { PlusCircleIcon, MinusIcon, XMarkIcon } from '@heroicons/vue/16/solid';
 import ProjectCreateModal from '@/packages/ui/src/Project/ProjectCreateModal.vue';
 import { twMerge } from 'tailwind-merge';
 import { Button } from '@/packages/ui/src/Buttons';
+
+const NO_PROJECT_ID = '';
 
 const task = defineModel<string | null>('task', {
     default: null,
@@ -57,6 +59,7 @@ const props = withDefaults(
         currency: string;
         emptyPlaceholder?: string;
         allowReset?: boolean;
+        noProjectValue?: string | null;
         enableEstimatedTime: boolean;
         organizationBillableRate: number | null;
         canCreateProject: boolean;
@@ -68,6 +71,7 @@ const props = withDefaults(
     {
         emptyPlaceholder: 'No Project',
         allowReset: false,
+        noProjectValue: NO_PROJECT_ID,
         variant: 'ghost',
         align: 'center',
         size: 'sm',
@@ -164,10 +168,10 @@ function updateFilteredResults() {
             is_archived: false,
             projects: [
                 {
-                    id: '',
+                    id: NO_PROJECT_ID,
                     name: 'No Project',
                     color: 'var(--theme-color-icon-default)',
-                    value: '',
+                    value: NO_PROJECT_ID,
                     client_id: null,
                     billable_rate: null,
                     is_archived: false,
@@ -493,7 +497,7 @@ function selectTask(taskId: string) {
 }
 
 function selectProject(projectId: string) {
-    project.value = projectId;
+    project.value = projectId === NO_PROJECT_ID ? props.noProjectValue : projectId;
     task.value = null;
     open.value = false;
     searchValue.value = '';
@@ -510,41 +514,35 @@ const showCreateProject = ref(false);
 </script>
 
 <template>
-    <template v-if="projects.length === 0 && canCreateProject">
-        <Button
-            :variant="props.variant"
-            :size="props.size"
-            :class="twMerge('w-full justify-start', props.class)"
-            @click="showCreateProject = true">
-            <PlusIcon class="w-4" />
-            <span class="truncate">Add new project</span>
-        </Button>
-    </template>
-    <Dropdown v-else v-model="open" :close-on-content-click="false" :align="props.align">
+    <Dropdown v-model="open" :close-on-content-click="false" :align="props.align">
         <template #trigger>
-            <div class="flex items-center gap-1">
-                <Button
-                    :variant="props.variant"
-                    :size="props.size"
-                    :class="twMerge('w-full justify-start overflow-hidden', props.class)">
-                    <div
-                        class="w-3 h-3 rounded-full shrink-0"
-                        :style="{ backgroundColor: selectedProjectColor }"></div>
-                    <span class="truncate shrink-[1] pr-1">{{ selectedProjectName }}</span>
-                    <template v-if="currentTask">
-                        <ChevronRightIcon class="w-4 h-4 text-text-tertiary shrink-0" />
-                        <span class="truncate shrink-[100]">{{ currentTask.name }}</span>
-                    </template>
-                </Button>
-                <button
-                    v-if="allowReset && project !== null"
-                    type="button"
-                    data-testid="project_reset_button"
-                    class="p-1 rounded hover:bg-quaternary text-text-tertiary hover:text-text-primary"
-                    @click.stop="resetProject">
-                    <XMarkIcon class="w-4 h-4" />
-                </button>
-            </div>
+            <slot name="trigger">
+                <div class="flex items-center gap-1">
+                    <Button
+                        :variant="props.variant"
+                        :size="props.size"
+                        :class="twMerge('w-full justify-start overflow-hidden', props.class)">
+                        <div
+                            class="w-3 h-3 rounded-full shrink-0"
+                            :style="{ backgroundColor: selectedProjectColor }"></div>
+                        <span class="truncate shrink-[1] text-text-primary pr-1">{{
+                            selectedProjectName
+                        }}</span>
+                        <template v-if="currentTask">
+                            <ChevronRightIcon class="w-4 h-4 text-text-tertiary shrink-0" />
+                            <span class="truncate shrink-[100]">{{ currentTask.name }}</span>
+                        </template>
+                    </Button>
+                    <button
+                        v-if="allowReset && project !== null"
+                        type="button"
+                        data-testid="project_reset_button"
+                        class="p-1 rounded hover:bg-quaternary text-text-tertiary hover:text-text-primary"
+                        @click.stop="resetProject">
+                        <XMarkIcon class="w-4 h-4" />
+                    </button>
+                </div>
+            </slot>
         </template>
         <template #content>
             <UseFocusTrap v-if="open" :options="{ immediate: true, allowOutsideClick: true }">
@@ -667,7 +665,8 @@ const showCreateProject = ref(false);
         :organization-billable-rate="organizationBillableRate"
         :currency="currency"
         :clients="clients"
-        :create-project></ProjectCreateModal>
+        :create-project
+        :initial-project-name="searchValue"></ProjectCreateModal>
 </template>
 
 <style scoped></style>

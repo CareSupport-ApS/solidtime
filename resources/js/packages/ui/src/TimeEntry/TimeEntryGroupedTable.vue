@@ -20,24 +20,30 @@ const selectedTimeEntries = defineModel<TimeEntry[]>('selected', {
     default: [],
 });
 
-const props = defineProps<{
-    timeEntries: TimeEntry[];
-    projects: Project[];
-    tasks: Task[];
-    tags: Tag[];
-    clients: Client[];
-    createTag: (name: string) => Promise<Tag | undefined>;
-    updateTimeEntry: (entry: TimeEntry) => void;
-    updateTimeEntries: (ids: string[], changes: Partial<TimeEntry>) => void;
-    deleteTimeEntries: (entries: TimeEntry[]) => void;
-    createTimeEntry: (entry: Omit<CreateTimeEntryBody, 'member_id'>) => void;
-    createProject: (project: CreateProjectBody) => Promise<Project | undefined>;
-    createClient: (client: CreateClientBody) => Promise<Client | undefined>;
-    currency: string;
-    organizationBillableRate: number | null;
-    enableEstimatedTime: boolean;
-    canCreateProject: boolean;
-}>();
+const props = withDefaults(
+    defineProps<{
+        timeEntries: TimeEntry[];
+        projects: Project[];
+        tasks: Task[];
+        tags: Tag[];
+        clients: Client[];
+        createTag: (name: string) => Promise<Tag | undefined>;
+        updateTimeEntry: (entry: TimeEntry) => void;
+        updateTimeEntries: (ids: string[], changes: Partial<TimeEntry>) => void;
+        deleteTimeEntries: (entries: TimeEntry[]) => void;
+        createTimeEntry: (entry: Omit<CreateTimeEntryBody, 'member_id'>) => void;
+        createProject: (project: CreateProjectBody) => Promise<Project | undefined>;
+        createClient: (client: CreateClientBody) => Promise<Client | undefined>;
+        currency: string;
+        organizationBillableRate: number | null;
+        enableEstimatedTime: boolean;
+        canCreateProject: boolean;
+        groupSimilarTimeEntries?: boolean;
+    }>(),
+    {
+        groupSimilarTimeEntries: true,
+    }
+);
 
 const groupedTimeEntries = computed(() => {
     const groupedEntriesByDay: Record<string, TimeEntry[]> = {};
@@ -58,6 +64,11 @@ const groupedTimeEntries = computed(() => {
         const newDailyEntries: TimeEntriesGroupedByType[] = [];
 
         for (const entry of dailyEntries) {
+            if (!props.groupSimilarTimeEntries) {
+                newDailyEntries.push({ ...entry, timeEntries: [entry] });
+                continue;
+            }
+
             // check if same entry already exists
             const oldEntriesIndex = newDailyEntries.findIndex(
                 (e) =>

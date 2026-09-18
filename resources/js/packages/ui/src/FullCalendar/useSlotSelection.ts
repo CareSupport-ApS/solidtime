@@ -1,7 +1,7 @@
 import { computed, ref, onUnmounted, type Ref, type ComputedRef } from 'vue';
 import type { Dayjs } from 'dayjs';
-import { getDayJsInstance } from '../utils/time';
-import { getUserTimezone } from '../utils/settings';
+import { getLocalizedDayJsFromMinutes } from '../utils/time';
+
 import type { CalendarSettings } from './calendarSettings';
 import { SLOT_HEIGHT } from './calendarTypes';
 
@@ -29,7 +29,7 @@ export function useSlotSelection(params: {
     function onSlotPointerDown(e: PointerEvent) {
         if (e.button !== 0) return;
         const target = e.target as HTMLElement;
-        if (target.closest('.fc-event') || target.closest('.activity-status-box')) return;
+        if (target.closest('.fc-event')) return;
 
         const dateStr = params.getDayFromClientX(e.clientX);
         if (!dateStr) return;
@@ -102,8 +102,6 @@ export function useSlotSelection(params: {
 
         const s = params.calendarSettings.value;
         const snap = s.snapMinutes;
-        const dayjs = getDayJsInstance();
-
         const startMinutes = params.pixelsToMinutesFromMidnight(selectionTop.value);
         const snappedStartMin = Math.floor(startMinutes / snap) * snap;
 
@@ -138,12 +136,8 @@ export function useSlotSelection(params: {
                 if (endMin <= 0) endMin = snap;
             }
 
-            startLocal = dayjs(`${startDateStr}T00:00:00`)
-                .tz(getUserTimezone(), true)
-                .add(startMin, 'minute');
-            endLocal = dayjs(`${endDateStr}T00:00:00`)
-                .tz(getUserTimezone(), true)
-                .add(endMin, 'minute');
+            startLocal = getLocalizedDayJsFromMinutes(startDateStr, startMin);
+            endLocal = getLocalizedDayJsFromMinutes(endDateStr, endMin);
         } else {
             const startDateStr = selectionStartDay;
             const endMinutes = params.pixelsToMinutesFromMidnight(
@@ -153,12 +147,8 @@ export function useSlotSelection(params: {
             if (snappedEndMin <= snappedStartMin) {
                 snappedEndMin = snappedStartMin + snap;
             }
-            startLocal = dayjs(`${startDateStr}T00:00:00`)
-                .tz(getUserTimezone(), true)
-                .add(snappedStartMin, 'minute');
-            endLocal = dayjs(`${startDateStr}T00:00:00`)
-                .tz(getUserTimezone(), true)
-                .add(snappedEndMin, 'minute');
+            startLocal = getLocalizedDayJsFromMinutes(startDateStr, snappedStartMin);
+            endLocal = getLocalizedDayJsFromMinutes(startDateStr, snappedEndMin);
         }
 
         params.onSelectionComplete(startLocal.utc(), endLocal.utc());

@@ -61,7 +61,7 @@ use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 class TimeEntryController extends Controller
 {
-    private function assertNoOverlap(Organization $organization, Member $member, \Illuminate\Support\Carbon $start, ?\Illuminate\Support\Carbon $end, ?TimeEntry $exclude = null): void
+    private function assertNoOverlap(Organization $organization, Member $member, Carbon $start, ?Carbon $end, ?TimeEntry $exclude = null): void
     {
         if (! $organization->prevent_overlapping_time_entries) {
             return;
@@ -661,9 +661,9 @@ class TimeEntryController extends Controller
         /** @var Member|null $member */
         $member = $request->has('member_id') ? Member::query()->findOrFail($request->input('member_id')) : null;
         if ($timeEntry->member->user_id === Auth::id() && ($member === null || $member->user_id === Auth::id())) {
-            $this->checkPermission($organization, 'time-entries:update:own');
+            $this->checkPermission($organization, 'time-entries:update:own', $timeEntry);
         } else {
-            $this->checkPermission($organization, 'time-entries:update:all');
+            $this->checkPermission($organization, 'time-entries:update:all', $timeEntry);
         }
 
         if ($timeEntry->end !== null && $request->has('end') && $request->input('end') === null) {

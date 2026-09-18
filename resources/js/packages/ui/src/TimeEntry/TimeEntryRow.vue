@@ -52,6 +52,7 @@ const props = defineProps<{
     selected?: boolean;
     canCreateProject: boolean;
     enableEstimatedTime: boolean;
+    isReport?: boolean;
 }>();
 
 const emit = defineEmits<{ selected: []; unselected: [] }>();
@@ -148,8 +149,7 @@ async function handleDeleteTimeEntry() {
                                 :task="timeEntry.task_id"
                                 @changed="updateProjectAndTask"></TimeTrackerProjectTaskDropdown>
                         </div>
-                        <div
-                            class="hidden @lg:flex items-center font-medium space-x-1 @lg:space-x-2 shrink-0">
+                        <div class="hidden @lg:flex items-center space-x-1 @lg:space-x-2 shrink-0">
                             <div v-if="showMember && members" class="text-sm px-2">
                                 {{ memberName }}
                             </div>
@@ -173,6 +173,7 @@ async function handleDeleteTimeEntry() {
                             <TimeEntryRowDurationInput
                                 :start="timeEntry.start"
                                 :end="timeEntry.end"
+                                :is-report="props.isReport"
                                 @changed="updateStartEndTime"></TimeEntryRowDurationInput>
                             <TimeTrackerStartStop
                                 :active="!!(timeEntry.start && !timeEntry.end)"
@@ -197,6 +198,7 @@ async function handleDeleteTimeEntry() {
                                 <TimeEntryRowDurationInput
                                     :start="timeEntry.start"
                                     :end="timeEntry.end"
+                                    :is-report="props.isReport"
                                     @changed="updateStartEndTime"></TimeEntryRowDurationInput>
                             </div>
                             <!-- Second row: project/task - tags - billable - start - more -->

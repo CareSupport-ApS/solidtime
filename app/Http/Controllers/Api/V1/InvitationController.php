@@ -40,7 +40,7 @@ class InvitationController extends Controller
     {
         $this->checkPermission($organization, 'invitations:view');
 
-        $invitations = $organization->teamInvitations()
+        $invitations = $organization->organizationInvitations()
             ->orderBy('created_at', 'desc')
             ->paginate(config('app.pagination_per_page_default'));
 
@@ -63,7 +63,7 @@ class InvitationController extends Controller
         $email = $request->getEmail();
         $role = $request->getRole();
 
-        $invitationService->inviteUser($organization, $email, $role);
+        $invitationService->inviteUser($organization, $email, $role, $this->user());
 
         return response()->json(null, 204);
     }

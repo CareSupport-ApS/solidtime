@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '..';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import { Tabs, TabsList } from '../tabs';
 import TabBarItem from '../TabBar/TabBarItem.vue';
 import CalendarSettingsPopover from './CalendarSettingsPopover.vue';
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="flex items-center justify-between bg-background px-2 py-1.5">
+    <div class="flex items-center justify-between bg-default-background px-2 py-1.5">
         <!-- Left: Navigation -->
         <div class="flex items-center gap-1">
             <Button

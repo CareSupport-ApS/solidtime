@@ -114,6 +114,8 @@ export type ApiToken = ApiTokenIndexResponse['data'][0];
 
 export type DetailedInvoiceResponse = ZodiosResponseByAlias<SolidTimeApi, 'getInvoice'>;
 
+export type DetailedInvoice = DetailedInvoiceResponse['data'];
+
 export type InvoiceIndexEntry = ZodiosResponseByAlias<SolidTimeApi, 'getInvoices'>['data'][0];
 
 export type UpdateInvoiceSettings = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoiceSettings'>;
@@ -121,6 +123,11 @@ export type UpdateInvoiceSettings = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoi
 export type CreateInvoiceBody = ZodiosBodyByAlias<SolidTimeApi, 'createInvoice'>;
 
 export type UpdateInvoiceBody = ZodiosBodyByAlias<SolidTimeApi, 'updateInvoice'>;
+
+export type User = ZodiosResponseByAlias<SolidTimeApi, 'getMe'>['data'];
+export type UpdateUserBody = ZodiosBodyByAlias<SolidTimeApi, 'updateUser'>;
+export type DeleteUserBody = ZodiosBodyByAlias<SolidTimeApi, 'deleteUser'>;
+export type DeleteOrganizationBody = ZodiosBodyByAlias<SolidTimeApi, 'deleteOrganization'>;
 
 const api = createApiClient('/api', { validate: 'none' });
 
