@@ -130,6 +130,7 @@ async function submitBillableRate() {
                     v-if="isAllowedToPerformPremiumAction()"
                     v-model="project.estimated_time"
                     @submit="submit()"></EstimatedTimeSection>
+                <ProjectVisibilitySelect v-model="project.is_public"></ProjectVisibilitySelect>
             </FieldGroup>
         </template>
         <template #footer>

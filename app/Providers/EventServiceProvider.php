@@ -9,10 +9,9 @@ use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\ServiceProvider;
 
 
-class EventServiceProvider extends BaseServiceProvider
+class EventServiceProvider extends ServiceProvider
 {
     /**
      * The event to listener mappings for the application.
