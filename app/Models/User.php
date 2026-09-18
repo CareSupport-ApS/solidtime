@@ -154,8 +154,7 @@ class User extends Authenticatable implements AuditableContract, FilamentUser, M
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_placeholder === false
-            && in_array($this->email, config('auth.super_admins', []), true)
-            && $this->hasVerifiedEmail();
+            && in_array($this->email, config('auth.super_admins', []), true);
     }
 
     public function isMemberOfOrganization(Organization $organization): bool
